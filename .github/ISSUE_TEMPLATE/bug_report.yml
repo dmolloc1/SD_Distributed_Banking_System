@@ -1,0 +1,53 @@
+name: "Reporte de Error / Inconsistencia"
+description: "Reporta un fallo técnico, inconsistencia de saldos o error en transacciones."
+title: "[BUG] - "
+labels: ["bug", "critical"]
+body:
+  - type: dropdown
+    id: severity
+    attributes:
+      label: "Severidad del Defecto"
+      options:
+        - "Crítica (Inconsistencia de dinero, pérdida de datos en JSON, Deadlock)"
+        - "Alta (Fallo en la comunicación entre bancos, Timeout)"
+        - "Media (Error en respuestas de API, Gateway)"
+        - "Baja (Detalle visual en el Frontend React)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: "Componente con el Defecto"
+      options:
+        - "Bank Storage (Archivos JSON/LOG)"
+        - "Saga Orchestrator (Transacciones)"
+        - "API Gateway / Routing"
+        - "Frontend UI"
+        - "Red Docker / Puertos"
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Descripción del Error"
+      description: "Qué está ocurriendo vs. qué debería ocurrir."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: "Pasos para Reproducir"
+      description: "Comandos cURL, peticiones HTTP o estados de archivos para replicar el fallo."
+      placeholder: |
+        1. Ejecutar cURL de transferencia de Bank A a Bank B.
+        2. Apagar el contenedor de Bank B a mitad de ejecución.
+        3. Verificar que el saldo en accounts_A.json no se restauró (Error de Rollback).
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs del Sistema / Estado del Archivo"
+      description: "Pega aquí los logs de Spring Boot o el contenido del archivo JSON afectado."

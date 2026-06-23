@@ -1,0 +1,66 @@
+name: "Nueva Funcionalidad"
+description: "Propuesta o asignación de una nueva capacidad para el sistema bancario."
+title: "[FEATURE] - "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: "Componente Afectado"
+      description: "Selecciona el microservicio o módulo principal donde se aplicará el cambio."
+      options:
+        - "Coordinator Service (Saga Orchestrator)"
+        - "Bank Node A (Spring Boot + Storage)"
+        - "Bank Node B (Spring Boot + Storage)"
+        - "Bank Node C (Spring Boot + Storage)"
+        - "API Gateway & Security"
+        - "Frontend (React Dashboard)"
+        - "DevOps / Docker / Scripts"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: assigned_team
+    attributes:
+      label: "Equipo Responsable"
+      description: "Asigna la responsabilidad según la división del proyecto."
+      options:
+        - "Equipo 1: Sistema de Archivos y Persistencia"
+        - "Equipo 2: Lógica de Negocio y Coordinación"
+        - "Equipo 3: API Gateway, UI y DevOps"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Descripción de la Tarea"
+      description: "Explica claramente qué se va a construir y por qué es necesario."
+      placeholder: "Ej: Implementar el mecanismo de FileChannel.lock() en FileAccountService..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical_considerations
+    attributes:
+      label: "Consideraciones Técnicas y de Persistencia"
+      description: "¿Cómo afecta esta tarea al sistema de archivos, bloqueos (Locks), logs o rendimiento?"
+      placeholder: "Ej: Requiere modificar el archivo accounts_A.json de forma atómica usando un shadow file (.tmp)."
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: "Criterios de Aceptación (Definition of Done)"
+      description: "Condiciones verificables que deben cumplirse para dar por completada la tarea."
+      placeholder: |
+        - [ ] El archivo JSON no se corrompe tras 100 escrituras concurrentes.
+        - [ ] Retorna HTTP 409 si el archivo está bloqueado por otra transacción.
+        - [ ] Incluye pruebas unitarias/integración.
+    validations:
+      required: true
+
+  - type: input
+    id: dependencies
+    attributes:
+      label: "Dependencias Bloqueantes"
+      description: "IDs de otros Issues de los cuales depende esta tarea (ej: #12, #15)."
