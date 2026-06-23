@@ -1,0 +1,14 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: bank-a-service
+
+bank:
+  code: BANK_A
+  data:
+    clients-file: data/clients_A.json
+    accounts-file: data/accounts_A.json
+    transactions-log: data/transactions_A.log
+    backup-accounts-file: data/backup_accounts_A.json

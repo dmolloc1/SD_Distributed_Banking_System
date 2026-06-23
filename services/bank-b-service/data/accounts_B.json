@@ -1,0 +1,7 @@
+[
+  {"accountId":"B-2001","clientId":"C002","bankCode":"BANK_B","type":"AHORROS","currency":"PEN","balance":1800.0},
+  {"accountId":"B-2002","clientId":"C002","bankCode":"BANK_B","type":"CORRIENTE","currency":"PEN","balance":750.0},
+  {"accountId":"B-2003","clientId":"C002","bankCode":"BANK_B","type":"AHORROS","currency":"USD","balance":300.0},
+  {"accountId":"B-2101","clientId":"C004","bankCode":"BANK_B","type":"AHORROS","currency":"PEN","balance":1400.0},
+  {"accountId":"B-2201","clientId":"C005","bankCode":"BANK_B","type":"CORRIENTE","currency":"PEN","balance":2600.0}
+]

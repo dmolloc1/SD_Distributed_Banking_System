@@ -1,0 +1,9 @@
+[
+  {"accountId":"C-3001","clientId":"C003","bankCode":"BANK_C","type":"AHORROS","currency":"PEN","balance":1100.0},
+  {"accountId":"C-3002","clientId":"C003","bankCode":"BANK_C","type":"CORRIENTE","currency":"PEN","balance":2100.0},
+  {"accountId":"C-3003","clientId":"C003","bankCode":"BANK_C","type":"AHORROS","currency":"USD","balance":450.0},
+  {"accountId":"C-3201","clientId":"C005","bankCode":"BANK_C","type":"AHORROS","currency":"PEN","balance":3900.0},
+  {"accountId":"C-3301","clientId":"C006","bankCode":"BANK_C","type":"AHORROS","currency":"PEN","balance":800.0},
+  {"accountId":"C-3302","clientId":"C006","bankCode":"BANK_C","type":"CORRIENTE","currency":"PEN","balance":1300.0},
+  {"accountId":"C-3303","clientId":"C006","bankCode":"BANK_C","type":"AHORROS","currency":"USD","balance":250.0}
+]

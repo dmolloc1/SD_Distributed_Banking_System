@@ -1,0 +1,14 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: bank-c-service
+
+bank:
+  code: BANK_C
+  data:
+    clients-file: data/clients_C.json
+    accounts-file: data/accounts_C.json
+    transactions-log: data/transactions_C.log
+    backup-accounts-file: data/backup_accounts_C.json

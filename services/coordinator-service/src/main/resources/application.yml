@@ -1,0 +1,11 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: coordinator-service
+
+banks:
+  bank-a-url: http://localhost:8081
+  bank-b-url: http://localhost:8082
+  bank-c-url: http://localhost:8083
