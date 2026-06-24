@@ -12,11 +12,11 @@ Cada vez que un nodo bancario se inicia, el `PersistenceManager` ejecuta una rut
 
 ```mermaid
 graph TD
-    Start[Inicio del Servicio] --> CheckTmp{¿Existe archivo .tmp?}
+    Start[Inicio del Servicio] --> CheckTmp{Existe archivo .tmp}
     CheckTmp -- No --> Healthy[Estado Saludable - Abrir API]
-    CheckTmp -- Sí --> CheckLog{¿La TX está en transactions.log?}
-    CheckLog -- Sí --> Apply[Renombrar .tmp a .json (Finalizar Commit)]
-    CheckLog -- No --> Discard[Borrar .tmp (Rollback automático)]
+    CheckTmp -- Sí --> CheckLog{La TX esta en transactions.log}
+    CheckLog -- Sí --> Apply[Renombrar .tmp a .json - Finalizar Commit]
+    CheckLog -- No --> Discard[Borrar .tmp - Rollback automatico]
     Apply --> Healthy
     Discard --> Healthy
 ```

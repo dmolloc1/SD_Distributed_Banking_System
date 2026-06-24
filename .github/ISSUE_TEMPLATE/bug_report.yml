@@ -1,4 +1,4 @@
-name: "Reporte de Error / Inconsistencia"
+name: "Reporte de Error"
 description: "Reporta un fallo técnico, inconsistencia de saldos o error en transacciones."
 title: "[BUG] - "
 labels: ["bug", "critical"]
