@@ -9,3 +9,33 @@ export async function getDistributedAccounts(clientId) {
 
   return response.json();
 }
+
+export async function submitDeposit(payload) {
+  return postGatewayOperation('/api/operations/deposit', payload);
+}
+
+export async function submitWithdraw(payload) {
+  return postGatewayOperation('/api/operations/withdraw', payload);
+}
+
+export async function submitTransfer(payload) {
+  return postGatewayOperation('/api/transfers', payload);
+}
+
+async function postGatewayOperation(path, payload) {
+  const response = await fetch(`${API_GATEWAY_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  return {
+    ok: response.ok,
+    statusCode: response.status,
+    data,
+  };
+}
