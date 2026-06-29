@@ -66,6 +66,7 @@ curl http://localhost:8080/api/bank-a/health
 curl http://localhost:8080/api/bank-b/health
 curl http://localhost:8080/api/bank-c/health
 curl http://localhost:8080/api/customers/C005/accounts
+http://localhost:8080/api/v1/orchestrator/transfers
 ```
 
 ## Endpoints internos existentes
