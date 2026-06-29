@@ -1,325 +1,204 @@
-# [TASK] Integrante 2: Implementar Transferencias Distribuidas (Saga Orquestado con Compensación)
+# [TASK][TEAM-Logic] Integrante 2: Transferencias Distribuidas con Saga Orquestado (con Compensación)
 
-## Objetivo
-Implementar la orquestación de transacciones distribuidas mediante el **Patrón Saga Orquestado** en el Global Transaction Orchestrator (GTO). Este patrón divide operaciones interbancarias en pasos locales secuenciales con transacciones compensatorias automáticas ante fallos.
+## Estado real del proyecto (verificado en este repo)
 
-**Justificación Arquitectónica:**
-- **Sin bloqueos distribuidos**: Cada banco ejecuta localmente sin mantener locks globales
-- **Consistencia eventual**: Se garantiza mediante compensación, no bloqueos
-- **Alta resiliencia**: Fallos en un nodo no bloquean indefinidamente al orquestador
-- **Procesos de larga duración**: Apropiado para transferencias con múltiples fases
+### Ya implementado
+- `coordinator-service`:
+  - `GET /distributed/health`
+  - `GET /distributed/accounts/{clientId}`
+  - cliente HTTP con `RestTemplate` (`BankServiceClient`)
+- `bank-a-service`, `bank-b-service`, `bank-c-service`:
+  - `GET /clients/{clientId}/accounts`
+  - lectura de cuentas desde JSON local
 
-## Distinción vs 2PC (Two-Phase Commit)
-❌ NO implementar 2PC porque:
-- Bloquea indefinidamente si el coordinador falla
-- Incumple RNF-02 (timeout por fase)
-- Incompatible con autonomía de datos
-
-✅ Implementar Saga porque:
-- Cada paso tiene timeout independiente
-- Incluye compensación (rollback lógico) explícito
-- Mantiene autonomía de cada Bank Core Node
-
----
-
-## Responsabilidades
-
-### 1. Domain Models (pe/unsa/sd/coordinator/domain/model/)
-
-**SagaTransaction.java** (modelo de transacción distribuida):
-- `transactionId`: UUID único global (generado automáticamente)
-- `sourceAccountId`: Cuenta origen
-- `sourceBankId`: ID banco origen (BANK_A, BANK_B, BANK_C)
-- `destinationAccountId`: Cuenta destino
-- `destinationBankId`: ID banco destino
-- `amount`: Monto a transferir (BigDecimal)
-- `status`: Estados de la Saga:
-  - `PENDING`: Recibida, no iniciada
-  - `EXECUTING_STEP_1`: Ejecutando step 1 (débito origen)
-  - `EXECUTING_STEP_2`: Ejecutando step 2 (crédito destino)
-  - `COMMITTED`: Ambos steps completados exitosamente
-  - `COMPENSATING`: Ejecutando transacciones compensatorias
-  - `ABORTED`: Saga fallida permanentemente
-- `initiatedAt`: Timestamp de inicio
-- `completedAt`: Timestamp de finalización (null si aún en progreso)
-- `steps`: List\<SagaStep\> historial completo
-
-**SagaStep.java** (un paso individual dentro de la saga):
-- `stepId`: ID único del paso dentro de la saga
-- `stepNumber`: Orden secuencial (1, 2, 3...)
-- `bankId`: Banco donde se ejecuta
-- `accountId`: Cuenta afectada
-- `operationType`: Tipo de operación local ("DEBIT" o "CREDIT")
-- `amount`: Monto del paso
-- `stepStatus`: Estado del paso:
-  - `PENDING`: No ejecutado aún
-  - `EXECUTING`: En progreso
-  - `SUCCESS`: Completado exitosamente
-  - `FAILED`: Falló, requiere compensación
-  - `COMPENSATED`: Transacción compensatoria ejecutada
-- `executedAt`: Timestamp de ejecución
-- `errorMessage`: Descripción del error (si aplica)
-- `compensationApplied`: Boolean indicando si se ejecutó compensación
-- `compensationTimestamp`: Timestamp de compensación
+### Aún NO implementado
+- No existe `POST /api/v1/orchestrator/transfers`
+- No existen modelos `SagaTransaction` ni `SagaStep`
+- No existen endpoints en bancos:
+  - `POST /api/v1/bank/accounts/{accountId}/debit`
+  - `POST /api/v1/bank/accounts/{accountId}/credit`
+- No hay lógica Saga ni compensación en coordinator
 
 ---
 
-### 2. Domain Service (pe/unsa/sd/coordinator/domain/service/)
+## Objetivo de la Issue 9
+Implementar en `coordinator-service` la orquestación de transferencias interbancarias usando **Saga Orquestado (NO 2PC)**:
 
-**SagaOrchestrationService.java** con métodos:
+1. Step 1: `DEBIT` en banco origen  
+2. Step 2: `CREDIT` en banco destino  
+3. Si falla step 2: compensación automática (`CREDIT` inverso en origen)
 
-#### **executeSaga(SagaTransaction saga) → SagaResult**
-Orquesta la ejecución completa de una saga:
-1. Persiste saga inicial con estado PENDING
-2. Itera sobre cada step de forma secuencial
-3. Para cada step:
-   - Llama `executeStep()`
-   - Si SUCCESS: continúa al siguiente
-   - Si FAILED: ejecuta `executeCompensation()` en pasos anteriores
-4. Retorna resultado final
+---
 
-```java
-public SagaResult executeSaga(SagaTransaction saga) {
-  // 1. Validar saga (montos > 0, bancos válidos)
-  // 2. Persister estado inicial
-  
-  for (SagaStep step : saga.getSteps()) {
-    try {
-      saga.setStatus("EXECUTING_STEP_" + step.getStepNumber());
-      executeStep(step);
-      step.setStepStatus("SUCCESS");
-    } catch (Exception e) {
-      step.setStepStatus("FAILED");
-      step.setErrorMessage(e.getMessage());
-      
-      // Ejecutar compensación en pasos anteriores
-      executeCompensation(saga, step.getStepNumber());
-      saga.setStatus("ABORTED");
-      return new SagaResult(false, saga);
-    }
-  }
-  
-  saga.setStatus("COMMITTED");
-  saga.setCompletedAt(LocalDateTime.now());
-  return new SagaResult(true, saga);
+## Estructura y archivos correctos (alineado al repo actual)
+
+> En este repo hoy se usan paquetes `controller`, `service`, `dto`, `client`, `model`.
+> Para mantener consistencia, se recomienda esta estructura.
+
+### Coordinator Service
+
+Crear en:
+
+```text
+services/coordinator-service/src/main/java/pe/unsa/sd/coordinator/
+  controller/
+    TransferController.java
+  service/
+    SagaOrchestrationService.java
+  model/
+    SagaTransaction.java
+    SagaStep.java
+    SagaStatus.java
+    SagaStepStatus.java
+    OperationType.java
+    BankId.java
+  dto/
+    TransferRequest.java
+    BankOperationRequest.java
+    CompensationRequest.java
+    SagaTransactionDTO.java
+```
+
+> Si tu equipo decide mantener `domain/model` y `domain/service`, también es válido, pero **no está usado actualmente** en este repo.
+
+### Bank Core Nodes (A/B/C)
+
+Crear/actualizar en cada banco:
+
+```text
+services/bank-a-service/src/main/java/pe/unsa/sd/banka/controller/AccountController.java
+services/bank-a-service/src/main/java/pe/unsa/sd/banka/service/FileAccountService.java
+
+services/bank-b-service/src/main/java/pe/unsa/sd/bankb/controller/AccountController.java
+services/bank-b-service/src/main/java/pe/unsa/sd/bankb/service/FileAccountService.java
+
+services/bank-c-service/src/main/java/pe/unsa/sd/bankc/controller/AccountController.java
+services/bank-c-service/src/main/java/pe/unsa/sd/bankc/service/FileAccountService.java
+```
+
+Nuevos endpoints requeridos por banco:
+- `POST /api/v1/bank/accounts/{accountId}/debit`
+- `POST /api/v1/bank/accounts/{accountId}/credit`
+
+---
+
+## Contrato API Coordinator
+
+### Endpoint
+`POST /api/v1/orchestrator/transfers`
+
+### CORS
+`@CrossOrigin(origins = "http://localhost:5173")`
+
+### Request (`TransferRequest`)
+```json
+{
+  "originAccountId": "ACC-A001",
+  "originBankId": "BANK_A",
+  "destinationAccountId": "ACC-B001",
+  "destinationBankId": "BANK_B",
+  "amount": 100.00,
+  "currency": "USD"
 }
 ```
 
-#### **executeStep(SagaStep step) → void**
-Ejecuta un paso individual (débito o crédito):
-- Llama al Bank Core Node correspondiente
-- Retorna exitosamente o lanza excepción
-- **NO espera confirmación final** (la compensación es el mecanismo de deshace)
-
-```java
-public void executeStep(SagaStep step) {
-  String bankUrl = getBankUrl(step.getBankId());
-  String operation = step.getOperationType(); // "DEBIT" o "CREDIT"
-  
-  try {
-    if ("DEBIT".equals(operation)) {
-      // Débito: quitar fondos de cuenta origen
-      // POST {bankUrl}/api/v1/bank/accounts/{accountId}/debit
-      bankServiceClient.debit(bankUrl, step.getAccountId(), step.getAmount());
-    } else {
-      // Crédito: agregar fondos a cuenta destino
-      // POST {bankUrl}/api/v1/bank/accounts/{accountId}/credit
-      bankServiceClient.credit(bankUrl, step.getAccountId(), step.getAmount());
-    }
-  } catch (RestClientException e) {
-    throw new SagaStepException("Fallo en step " + step.getStepNumber(), e);
-  }
-}
-```
-
-#### **executeCompensation(SagaTransaction saga, int failedAtStep) → void**
-Ejecuta transacciones compensatorias para deshacer steps anteriores:
-
-```java
-public void executeCompensation(SagaTransaction saga, int failedAtStep) {
-  saga.setStatus("COMPENSATING");
-  
-  // Iterar HACIA ATRÁS desde (failedAtStep - 1) hasta 1
-  for (int i = failedAtStep - 1; i >= 1; i--) {
-    SagaStep step = saga.getSteps().get(i - 1);
-    try {
-      // Invertir la operación
-      String inverseOp = "DEBIT".equals(step.getOperationType()) ? "CREDIT" : "DEBIT";
-      
-      String bankUrl = getBankUrl(step.getBankId());
-      if ("CREDIT".equals(inverseOp)) {
-        // Si fue débito, hacer crédito de compensación
-        bankServiceClient.credit(bankUrl, step.getAccountId(), step.getAmount());
-      } else {
-        // Si fue crédito, hacer débito de compensación
-        bankServiceClient.debit(bankUrl, step.getAccountId(), step.getAmount());
-      }
-      
-      step.setCompensationApplied(true);
-      step.setCompensationTimestamp(LocalDateTime.now());
-      
-    } catch (RestClientException e) {
-      // CRÍTICO: si compensación falla, registro de error para reconciliación manual
-      log.error("CRÍTICO: Compensación falló en Step {}. Reconciliación manual necesaria", i, e);
-      step.setErrorMessage("Compensación falló: " + e.getMessage());
-    }
-  }
-}
-```
+### Responses esperadas
+- `200 OK` si `status = COMMITTED`
+- `409 Conflict` si `status = ABORTED` (incluye steps y compensación)
+- `400 Bad Request` si request inválido
+- `500 Internal Server Error` si error no controlado
 
 ---
 
-### 3. DTOs (pe/unsa/sd/coordinator/dto/)
+## Modelos mínimos
 
-- **TransferRequest.java**:
-  - `originAccountId`, `destinationAccountId`
-  - `originBankId`, `destinationBankId`
-  - `amount`, `currency`
+### `SagaTransaction`
+- `transactionId` (UUID)
+- `sourceAccountId`
+- `sourceBankId` (`BANK_A`, `BANK_B`, `BANK_C`)
+- `destinationAccountId`
+- `destinationBankId`
+- `amount` (`BigDecimal`)
+- `status`: `PENDING`, `EXECUTING_STEP_1`, `EXECUTING_STEP_2`, `COMMITTED`, `COMPENSATING`, `ABORTED`
+- `initiatedAt`
+- `completedAt` (nullable)
+- `steps` (`List<SagaStep>`)
 
-- **SagaStepRequest.java** (solicitud para ejecutar un paso):
-  - `sagaId`: ID de la saga a la que pertenece
-  - `stepNumber`: Orden del paso
-  - `bankId`: Banco
-  - `accountId`: Cuenta
-  - `operationType`: "DEBIT" o "CREDIT"
-  - `amount`: Monto
-
-- **CompensationRequest.java** (solicitud de compensación):
-  - `sagaId`: ID de la saga
-  - `originalOperation`: Operación original ("DEBIT" o "CREDIT")
-  - `bankId`, `accountId`, `amount`
-  - `reason`: Motivo de compensación
-
-- **SagaTransactionDTO.java**:
-  - Serialización completa de SagaTransaction
-  - Incluye steps con estado actual
-  - Timestamps de ejecución
-
----
-
-### 4. Controller (pe/unsa/sd/coordinator/controller/)
-
-**TransferController.java**:
-
-```
-POST /api/v1/orchestrator/transfers
-  Body: {
-    "originAccountId": "ACC-A001",
-    "originBankId": "BANK_A",
-    "destinationAccountId": "ACC-B001",
-    "destinationBankId": "BANK_B",
-    "amount": 100.00,
-    "currency": "USD"
-  }
-
-  Response (200 OK - COMMITTED):
-  {
-    "transactionId": "tx-uuid",
-    "status": "COMMITTED",
-    "amount": 100.00,
-    "initiatedAt": "2024-01-15T10:30:00Z",
-    "completedAt": "2024-01-15T10:30:05Z",
-    "steps": [
-      {
-        "stepNumber": 1,
-        "operation": "DEBIT",
-        "bank": "BANK_A",
-        "account": "ACC-A001",
-        "amount": 100.00,
-        "status": "SUCCESS",
-        "executedAt": "2024-01-15T10:30:01Z"
-      },
-      {
-        "stepNumber": 2,
-        "operation": "CREDIT",
-        "bank": "BANK_B",
-        "account": "ACC-B001",
-        "amount": 100.00,
-        "status": "SUCCESS",
-        "executedAt": "2024-01-15T10:30:02Z"
-      }
-    ]
-  }
-
-  Response (409 Conflict - ABORTED con compensación):
-  {
-    "transactionId": "tx-uuid",
-    "status": "ABORTED",
-    "error": "INSUFFICIENT_FUNDS",
-    "steps": [
-      {
-        "stepNumber": 1,
-        "operation": "DEBIT",
-        "status": "SUCCESS",
-        "executedAt": "2024-01-15T10:30:01Z"
-      },
-      {
-        "stepNumber": 2,
-        "operation": "CREDIT",
-        "status": "FAILED",
-        "error": "INSUFFICIENT_FUNDS",
-        "failedAt": "2024-01-15T10:30:02Z"
-      },
-      {
-        "stepNumber": 1,
-        "operation": "CREDIT (COMPENSATION)",
-        "status": "COMPENSATED",
-        "compensatedAt": "2024-01-15T10:30:03Z"
-      }
-    ]
-  }
-
-  Response (400 Bad Request):
-  {
-    "error": "INVALID_REQUEST",
-    "message": "Monto debe ser > 0"
-  }
-```
+### `SagaStep`
+- `stepId`
+- `stepNumber`
+- `bankId`
+- `accountId`
+- `operationType` (`DEBIT`, `CREDIT`)
+- `amount`
+- `stepStatus` (`PENDING`, `EXECUTING`, `SUCCESS`, `FAILED`, `COMPENSATED`)
+- `executedAt`
+- `errorMessage` (nullable)
+- `compensationApplied` (boolean)
+- `compensationTimestamp` (nullable)
 
 ---
 
-### 5. Logging Detallado
+## Servicio de Orquestación
 
-```
+`SagaOrchestrationService.executeSaga(SagaTransaction saga)`:
+
+1. Validar entrada (`amount > 0`, bancos válidos)
+2. Ejecutar step 1 (`DEBIT` origen)
+3. Ejecutar step 2 (`CREDIT` destino)
+4. Si ambos OK -> `COMMITTED` y `completedAt=now`
+5. Si falla step 2 -> `COMPENSATING` -> `CREDIT` compensatorio en origen -> `ABORTED`
+
+Métodos auxiliares:
+- `executeStep(SagaStep step)`
+- `executeCompensation(SagaTransaction saga, int failedAtStep)`
+
+Regla:
+- Compensar en orden inverso de steps exitosos
+- Si falla una compensación: registrar error crítico y dejar trazabilidad
+
+---
+
+## Mapeo de bancos (MVP)
+- `BANK_A -> http://localhost:8081`
+- `BANK_B -> http://localhost:8082`
+- `BANK_C -> http://localhost:8083`
+
+---
+
+## Logging mínimo requerido
+
+```text
 === SAGA INICIADA ===
-SagaId=tx-abc123, Origen=BANK_A:ACC-A001, Destino=BANK_B:ACC-B001, Monto=100.00
-
-[STEP 1/2] Ejecutando DEBIT en BANK_A
-✓ DEBIT exitoso. Nuevo saldo: 4900.00
-
-[STEP 2/2] Ejecutando CREDIT en BANK_B
-✗ CREDIT falló: INSUFFICIENT_FUNDS_BANK_B
-⚠ Iniciando compensación...
-
-[COMPENSACIÓN STEP 1/1] Revirtiendo DEBIT en BANK_A
-✓ CREDIT (compensación) exitoso. Saldo restaurado: 5000.00
-
-=== SAGA ABORTADA ===
-SagaId=tx-abc123, Razón=Fallo en Step 2, CompensacionEstado=COMPLETA
+[STEP 1/2] Ejecutando DEBIT en BANK_A account=ACC-A001 amount=100.00
+✓ STEP 1 SUCCESS
+[STEP 2/2] Ejecutando CREDIT en BANK_B account=ACC-B001 amount=100.00
+✗ STEP 2 FAILED: ...
+⚠ Iniciando compensación
+[COMPENSACIÓN] CREDIT en BANK_A account=ACC-A001 amount=100.00
+=== SAGA COMMITTED ===
+o
+=== SAGA ABORTED ===
 ```
 
 ---
 
-## Criterios de Aceptación
-
-- [ ] Endpoint `/api/v1/orchestrator/transfers` recibe solicitud
-- [ ] Saga ejecuta steps de forma **secuencial** (no paralela)
-- [ ] Step 1 (DEBIT origen) se ejecuta correctamente
-- [ ] Step 2 (CREDIT destino) se ejecuta correctamente
-- [ ] Si Step 2 falla: compensación automática ejecuta CREDIT inverso en origen
-- [ ] Cada step registrado con `stepNumber`, `status`, `executedAt`
-- [ ] Compensación solo se ejecuta si hay fallos
-- [ ] Logs muestran el flujo completo de ejecución y compensación
-- [ ] Respuesta JSON incluye historial de steps **en orden de ejecución**
-- [ ] Tests manuales demuestran: éxito, fallo con compensación
-- [ ] Manejo robusto de errores de red
+## Definition of Done
+- [ ] `POST /api/v1/orchestrator/transfers` operativo
+- [ ] Saga secuencial (sin 2PC)
+- [ ] Step 1 (`DEBIT` origen) correcto
+- [ ] Step 2 (`CREDIT` destino) correcto en éxito
+- [ ] Si falla step 2, compensación ejecutada (`CREDIT` origen)
+- [ ] Steps con `stepNumber`, `stepStatus`, `executedAt`
+- [ ] JSON de respuesta incluye historial completo de steps
+- [ ] Logs trazables por `transactionId`
+- [ ] Prueba manual de éxito y fallo con compensación
 
 ---
 
-## Prueba Manual
+## Prueba manual (Coordinator)
 
 ```bash
-# Transfer exitosa (A → B)
 curl -X POST http://localhost:8080/api/v1/orchestrator/transfers \
   -H "Content-Type: application/json" \
   -d '{
@@ -330,8 +209,9 @@ curl -X POST http://localhost:8080/api/v1/orchestrator/transfers \
     "amount": 50.00,
     "currency": "USD"
   }'
+```
 
-# Transfer con fondos insuficientes en destino (falla y compensa)
+```bash
 curl -X POST http://localhost:8080/api/v1/orchestrator/transfers \
   -H "Content-Type: application/json" \
   -d '{
@@ -346,34 +226,10 @@ curl -X POST http://localhost:8080/api/v1/orchestrator/transfers \
 
 ---
 
-## Notas Técnicas
+## Correcciones aplicadas respecto a la versión anterior
 
-- **SIN bloqueos distribuidos**: Cada banco maneja concurrencia localmente
-- **Transacciones compensatorias**: Diseñar compensación inversa para cada step
-- **Timeouts por step**: Cada call a un banco tiene timeout configurable
-- **Persistencia de Saga**: Guardar estado de saga en archivo JSON para recuperación
-- **Idempotencia**: Implementar Idempotency Keys en headers HTTP
-- **URLs de bancos**: BANK_A = http://localhost:8081, BANK_B = http://localhost:8082
-- **Logging**: Usar SLF4J con niveles INFO para flujo normal, ERROR para fallos
-
----
-
-## Diferencia vs 2PC
-
-| Aspecto | 2PC | Saga Orquestado |
-|--------|-----|-----------------|
-| Bloqueos | Distribuidos durante 2 fases | Solo locales en cada banco |
-| Fallo del coordinador | Bloquea indefinidamente | Puede recuperarse con compensación |
-| Latencia | Alta (3 round-trips) | Media (steps secuenciales) |
-| Compensación | Rollback atómico | Lógica explícita por step |
-| Escalabilidad | Limitada | Alta (sin bloqueos globales) |
-
----
-
-## Dependencias
-
-Requiere que **Integrante 1** haya implementado en Bank Core Nodes:
-- POST `/api/v1/bank/accounts/{accountId}/debit`
-- POST `/api/v1/bank/accounts/{accountId}/credit`
-
-(NO `/reserve`, `/confirm`, `/rollback` que son 2PC)
+1. Se eliminó referencia a DTO `SagaStepRequest` y se reemplazó por `BankOperationRequest` (según issue original).
+2. Se corrigió el alcance para incluir explícitamente `BANK_C`.
+3. Se eliminó mezcla conceptual con 2PC (`reserve/confirm/rollback`).
+4. Se alineó estructura de paquetes con el estilo actual del repo (`model/service/controller/dto`).
+5. Se dejó claro que los endpoints `debit/credit` en bank nodes son dependencia obligatoria.
