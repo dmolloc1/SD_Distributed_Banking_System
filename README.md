@@ -35,7 +35,7 @@ services/
 frontend/
 ```
 
-## Puertos
+## Puertos, Mapeo de bancos
 
 | Servicio | Puerto |
 | --- | --- |
@@ -45,6 +45,10 @@ frontend/
 | bank-c-service | 8083 |
 | coordinator-service | 8090 |
 | frontend | 5173 |
+
+## Nomenclatura
+Cliente: C001,C002...
+Cuenta: A-1001...
 
 ## Ejecucion local
 
@@ -66,7 +70,8 @@ curl http://localhost:8080/api/bank-a/health
 curl http://localhost:8080/api/bank-b/health
 curl http://localhost:8080/api/bank-c/health
 curl http://localhost:8080/api/customers/C005/accounts
-http://localhost:8080/api/v1/orchestrator/transfers
+curl http://localhost:8080/api/v1/orchestrator/transfers
+curl http://localhost:8081/api/v1/bank/accounts/C001/debit
 ```
 
 ## Endpoints internos existentes
