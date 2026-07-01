@@ -11,7 +11,7 @@
   "bankCode" : "BANK_A",
   "type" : "CORRIENTE",
   "currency" : "PEN",
-  "balance" : 2350.0
+  "balance" : 2300.0
 }, {
   "accountId" : "A-1003",
   "clientId" : "C001",
