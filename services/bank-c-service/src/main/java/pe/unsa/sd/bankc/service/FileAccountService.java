@@ -35,61 +35,14 @@ public class FileAccountService {
                 .orElseThrow(() -> new IllegalArgumentException("Cuenta no encontrada: " + accountId));
     }
 
-    public Path getAccountsPath() {
-        return accountsPath;
-    }
-
     public List<Account> findAccountsByClientId(String clientId) throws IOException {
         return findAllAccounts().stream()
                 .filter(account -> clientId.equals(account.getClientId()))
                 .toList();
     }
 
-    public Account debit(String accountId, double amount) throws IOException {
-        BigDecimal normalizedAmount = normalizeAmount(BigDecimal.valueOf(amount));
-        validateAmount(normalizedAmount);
-
-        List<Account> accounts = findAllAccounts();
-        Account account = findAccount(accounts, accountId);
-
-        BigDecimal currentBalance = normalizeAmount(account.getBalance());
-        if (currentBalance.compareTo(normalizedAmount) < 0) {
-            throw new IllegalStateException("INSUFFICIENT_FUNDS");
-        }
-
-        account.setBalance(currentBalance.subtract(normalizedAmount).setScale(MONEY_SCALE, RoundingMode.HALF_EVEN));
-        writeAllAccounts(accounts);
-        return account;
-    }
-
-    public Account credit(String accountId, double amount) throws IOException {
-        BigDecimal normalizedAmount = normalizeAmount(BigDecimal.valueOf(amount));
-        validateAmount(normalizedAmount);
-
-        List<Account> accounts = findAllAccounts();
-        Account account = findAccount(accounts, accountId);
-
-        BigDecimal currentBalance = normalizeAmount(account.getBalance());
-        account.setBalance(currentBalance.add(normalizedAmount).setScale(MONEY_SCALE, RoundingMode.HALF_EVEN));
-        writeAllAccounts(accounts);
-        return account;
-    }
-
-    private Account findAccount(List<Account> accounts, String accountId) {
-        return accounts.stream()
-                .filter(account -> accountId.equals(account.getAccountId()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("ACCOUNT_NOT_FOUND"));
-    }
-
-    private void writeAllAccounts(List<Account> accounts) throws IOException {
-        objectMapper.writerWithDefaultPrettyPrinter().writeValue(accountsPath.toFile(), accounts);
-    }
-
-    private void validateAmount(BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("INVALID_AMOUNT");
-        }
+    public Path getAccountsPath() {
+        return accountsPath;
     }
 
     private BigDecimal normalizeAmount(BigDecimal amount) {
