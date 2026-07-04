@@ -4,6 +4,57 @@ server:
 spring:
   application:
     name: api-gateway-service
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - http://localhost:5173
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - '*'
+            allowCredentials: false
+      routes:
+        - id: coordinator-accounts
+          uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
+          predicates:
+            - Path=/api/customers/{customerId}/accounts
+          filters:
+            - RewritePath=/api/customers/(?<customerId>[^/]+)/accounts, /distributed/accounts/$\{customerId}
+
+        - id: coordinator-health
+          uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
+          predicates:
+            - Path=/api/coordinator/health
+          filters:
+            - SetPath=/distributed/health
+
+        - id: bank-a-health
+          uri: ${BANK_A_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/bank-a/health
+          filters:
+            - SetPath=/health
+
+        - id: bank-b-health
+          uri: ${BANK_B_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/bank-b/health
+          filters:
+            - SetPath=/health
+
+        - id: bank-c-health
+          uri: ${BANK_C_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/bank-c/health
+          filters:
+            - SetPath=/health
 
 management:
   endpoints:
