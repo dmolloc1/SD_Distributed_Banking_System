@@ -18,6 +18,7 @@ public class SagaTransaction {
     private OffsetDateTime completedAt;
     private List<SagaStep> steps = new ArrayList<>();
     private String error;
+    private String message;  // Human-readable status for frontend
 
     public SagaTransaction() {
     }
@@ -108,5 +109,13 @@ public class SagaTransaction {
 
     public void setError(String error) {
         this.error = error;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

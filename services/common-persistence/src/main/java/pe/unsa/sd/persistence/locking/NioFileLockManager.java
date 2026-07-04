@@ -18,14 +18,16 @@ import pe.unsa.sd.persistence.exception.StorageException;
 public class NioFileLockManager implements LockManager {
 
   private final Path lockFilePath;
-  private final int timeoutMs = 2000;
+  private final int timeoutMs;
 
   // Lock interno para sincronizar hilos de la misma JVM y evitar OverlappingFileLockException
   private final ReentrantLock internalLock = new ReentrantLock();
 
   public NioFileLockManager(
-      @Value("${bank.data.accounts-lock-file:data/.accounts.json.lock}") String lockFile) {
+      @Value("${bank.data.accounts-lock-file:data/.accounts.json.lock}") String lockFile,
+      @Value("${bank.lock.timeout-ms:2000}") int timeoutMs) {
     this.lockFilePath = Path.of(lockFile);
+    this.timeoutMs = timeoutMs;
   }
 
   @Override
