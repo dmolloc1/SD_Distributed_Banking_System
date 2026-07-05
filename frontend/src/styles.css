@@ -860,6 +860,11 @@ textarea {
   background-color: rgba(245, 158, 11, 0.05);
 }
 
+.status-section.processing {
+  border-color: rgba(99, 102, 241, 0.3);
+  background-color: rgba(99, 102, 241, 0.05);
+}
+
 .status-section.error {
   border-color: rgba(239, 68, 68, 0.3);
   background-color: rgba(239, 68, 68, 0.05);
@@ -877,6 +882,7 @@ textarea {
 .status-title.info { color: var(--accent-blue); }
 .status-title.success { color: var(--accent-green); }
 .status-title.pending { color: var(--warning-yellow); }
+.status-title.processing { color: #6366f1; }
 .status-title.error { color: var(--danger-red); }
 
 .status-message {
@@ -1112,5 +1118,74 @@ input:checked + .slider:before {
   .portfolio-value-group {
     text-align: left;
   }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.spinner {
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.transfer-tabs-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.transfer-tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.transfer-tab-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.transfer-tab-btn.active {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.transfer-tab-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.validation-alert-danger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: var(--danger-red, #ef4444);
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 

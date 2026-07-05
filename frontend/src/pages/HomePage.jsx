@@ -20,6 +20,7 @@ function HomePage() {
   const [operationLoading, setOperationLoading] = useState(false);
   const [operationStatus, setOperationStatus] = useState(null);
   const [error, setError] = useState('');
+  const [pollingIntervalId, setPollingIntervalId] = useState(null);
 
   // UTC clock state
   const [timeStr, setTimeStr] = useState('');
@@ -35,6 +36,14 @@ function HomePage() {
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalId) {
+        clearInterval(pollingIntervalId);
+      }
+    };
+  }, [pollingIntervalId]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -77,6 +86,11 @@ function HomePage() {
       return;
     }
 
+    if (pollingIntervalId) {
+      clearInterval(pollingIntervalId);
+      setPollingIntervalId(null);
+    }
+
     const payload = {
       accessBank,
       customerId: clientId.trim(),
@@ -91,20 +105,71 @@ function HomePage() {
       message: 'Validando solicitud en API Gateway.',
     });
 
+    let shouldKeepLoading = false;
     try {
       const response = await submitSelectedOperation(operationType, payload);
 
-      if (!response.ok) {
+      
+      if (operationType === 'transfer' && response.statusCode === 202) {
+        const txId = response.data.transactionId;
+        if (!txId) {
+          throw new Error("No transactionId returned from transfer submission");
+        }
+
+        shouldKeepLoading = true;
+
         setOperationStatus({
-          kind: 'error',
-          message: 'La operacion fue rechazada por el sistema distribuido.',
+          kind: 'processing',
+          message: 'Procesando...',
           details: response.data,
         });
-        return;
-      }
 
-      if (operationType === 'transfer' && response.data?.transactionId) {
-        await pollTransferStatus(response.data.transactionId);
+        const intervalId = setInterval(async () => {
+          try {
+            const pollRes = await fetch(`http://localhost:8080/api/transfers/${txId}`);
+            const data = await pollRes.json();
+            
+            if (data.status === 'COMMITTED') {
+              clearInterval(intervalId);
+              setPollingIntervalId(null);
+              setOperationLoading(false);
+              setOperationStatus({
+                kind: 'success',
+                message: `Transferencia completada con exito. (Estado Saga: ${data.status})`,
+                details: data,
+              });
+              const normalizedClientId = clientId.trim();
+              if (normalizedClientId) {
+                const result = await getDistributedAccounts(normalizedClientId);
+                setAccounts(result);
+              }
+            } else if (data.status === 'COMPENSATED' || data.status === 'ABORTED' || data.status === 'FAILED') {
+              clearInterval(intervalId);
+              setPollingIntervalId(null);
+              setOperationLoading(false);
+              setOperationStatus({
+                kind: 'error',
+                message: `Transferencia fallida y compensada. (Estado Saga: ${data.status})`,
+                details: data,
+              });
+              const normalizedClientId = clientId.trim();
+              if (normalizedClientId) {
+                const result = await getDistributedAccounts(normalizedClientId);
+                setAccounts(result);
+              }
+            } else {
+              setOperationStatus({
+                kind: 'processing',
+                message: `Procesando... (${data.message || data.status})`,
+                details: data,
+              });
+            }
+          } catch (pollErr) {
+            console.error("Error polling transfer status:", pollErr);
+          }
+        }, 1500);
+
+        setPollingIntervalId(intervalId);
         return;
       }
 
@@ -113,13 +178,23 @@ function HomePage() {
         message: 'Operacion completada.',
         details: response.data,
       });
+
+      if (response.ok) {
+        const normalizedClientId = clientId.trim();
+        if (normalizedClientId) {
+          const result = await getDistributedAccounts(normalizedClientId);
+          setAccounts(result);
+        }
+      }
     } catch (requestError) {
       setOperationStatus({
         kind: 'error',
         message: 'No se pudo enviar la operacion al API Gateway.',
       });
     } finally {
-      setOperationLoading(false);
+      if (!shouldKeepLoading) {
+        setOperationLoading(false);
+      }
     }
   }
 
@@ -304,7 +379,7 @@ function HomePage() {
           <div className="bank-cards-grid">
             <div className="bank-card">
               <div className="bank-card-header">
-                <span className="bank-card-title">Bank A Consolidated</span>
+                <span className="bank-card-title">Bank A</span>
                 <div className="bank-card-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -313,13 +388,12 @@ function HomePage() {
               </div>
               <div className="bank-card-body">
                 <div className="bank-card-amount">${bankATotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                <div className="bank-card-code">D091...220</div>
               </div>
             </div>
 
             <div className="bank-card">
               <div className="bank-card-header">
-                <span className="bank-card-title">Bank B Global</span>
+                <span className="bank-card-title">Bank B</span>
                 <div className="bank-card-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
@@ -328,13 +402,12 @@ function HomePage() {
               </div>
               <div className="bank-card-body">
                 <div className="bank-card-amount">${bankBTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                <div className="bank-card-code">0Xb4...50a</div>
               </div>
             </div>
 
             <div className="bank-card">
               <div className="bank-card-header">
-                <span className="bank-card-title">Bank C Reserve</span>
+                <span className="bank-card-title">Bank C </span>
                 <div className="bank-card-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -343,7 +416,7 @@ function HomePage() {
               </div>
               <div className="bank-card-body">
                 <div className="bank-card-amount">${bankCTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                <div className="bank-card-code">B053...21s</div>
+
               </div>
             </div>
           </div>

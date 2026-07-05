@@ -148,6 +148,8 @@ public class AccountOperationService {
             List<Account> accounts = loadAllAccounts();
             Account lockedAccount = findAccount(accounts, accountId);
 
+            accountValidationService.validateWithdraw(lockedAccount, normalizedAmount);
+
             BigDecimal balanceBefore = normalizeAmount(lockedAccount.getBalance());
             BigDecimal balanceAfter = balanceBefore.subtract(normalizedAmount).setScale(MONEY_SCALE, RoundingMode.HALF_EVEN);
 

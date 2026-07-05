@@ -28,6 +28,13 @@ spring:
           filters:
             - RewritePath=/api/customers/(?<customerId>[^/]+)/accounts, /distributed/accounts/$\{customerId}
 
+        - id: coordinator-transfers
+          uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
+          predicates:
+            - Path=/api/transfers/{transactionId}
+          filters:
+            - RewritePath=/api/transfers/(?<transactionId>[^/]+), /api/v1/orchestrator/transfers/$\{transactionId}
+
         - id: coordinator-health
           uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
           predicates:
