@@ -4,12 +4,15 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import pe.unsa.sd.banka.exception.InsufficientFundsException;
 import pe.unsa.sd.banka.exception.InvalidAmountException;
 import pe.unsa.sd.banka.model.Account;
@@ -33,27 +36,62 @@ public class AccountController {
     }
 
     @PostMapping("/api/v1/bank/accounts/{accountId}/debit")
-    public ResponseEntity<?> debit(@PathVariable String accountId, @RequestBody BankOperationRequest request) {
-        try {
-            accountOperationService.debit(request.getTransactionId(), accountId, request.getAmount());
-            return ResponseEntity.ok(Map.of("status", "SUCCESS"));
-        } catch (InvalidAmountException | InsufficientFundsException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", "INTERNAL_ERROR"));
-        }
+    public Map<String, Object> debit(@PathVariable String accountId, @RequestBody BankOperationRequest request) throws IOException {
+        String transactionId = resolveTransactionId(request);
+        return applyOperation(
+                () -> accountOperationService.debit(transactionId, accountId, request.getAmount()),
+                accountId,
+                transactionId,
+                request);
     }
 
     @PostMapping("/api/v1/bank/accounts/{accountId}/credit")
-    public ResponseEntity<?> credit(@PathVariable String accountId, @RequestBody BankOperationRequest request) {
-        try {
-            accountOperationService.credit(request.getTransactionId(), accountId, request.getAmount());
-            return ResponseEntity.ok(Map.of("status", "SUCCESS"));
-        } catch (InvalidAmountException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("error", "INTERNAL_ERROR"));
+    public Map<String, Object> credit(@PathVariable String accountId, @RequestBody BankOperationRequest request) throws IOException {
+        String transactionId = resolveTransactionId(request);
+        return applyOperation(
+                () -> accountOperationService.credit(transactionId, accountId, request.getAmount()),
+                accountId,
+                transactionId,
+                request);
+    }
+
+    private String resolveTransactionId(BankOperationRequest request) {
+        if (request == null || request.getTransactionId() == null || request.getTransactionId().isBlank()) {
+            return UUID.randomUUID().toString();
         }
+        return request.getTransactionId();
+    }
+
+    private Map<String, Object> applyOperation(
+            AccountOperation operation,
+            String accountId,
+            String transactionId,
+            BankOperationRequest request) throws IOException {
+        if (request == null || request.getAmount() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID_AMOUNT");
+        }
+
+        try {
+            BigDecimal balance = operation.execute();
+            return Map.of(
+                    "status", "SUCCESS",
+                    "accountId", accountId,
+                    "balance", balance,
+                    "transactionId", transactionId);
+        } catch (InvalidAmountException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        } catch (InsufficientFundsException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage(), exception);
+        }
+    }
+
+    @FunctionalInterface
+    private interface AccountOperation {
+        BigDecimal execute() throws IOException;
     }
 
     public static class BankOperationRequest {

@@ -93,9 +93,9 @@ Nuevos endpoints requeridos por banco:
 ### Request (`TransferRequest`)
 ```json
 {
-  "originAccountId": "ACC-A001",
+  "originAccountId": "A-1001",
   "originBankId": "BANK_A",
-  "destinationAccountId": "ACC-B001",
+  "destinationAccountId": "B-2001",
   "destinationBankId": "BANK_B",
   "amount": 100.00,
   "currency": "USD"
