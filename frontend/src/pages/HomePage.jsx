@@ -149,18 +149,6 @@ function HomePage() {
             <span>Ledger</span>
           </div>
 
-          <div className="sidebar-profile">
-            <div className="profile-avatar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div className="profile-info">
-              <span className="profile-name">Interbank Admin</span>
-              <span className="profile-role">Sx62...73a</span>
-            </div>
-          </div>
-
           <nav className="sidebar-menu">
             <span className="menu-item active">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -204,16 +192,8 @@ function HomePage() {
             </span>
           </nav>
         </div>
-
-        <div className="sidebar-footer">
-          <button className="logout-btn" onClick={() => alert('Cerrando sesión de administrador')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Logout Session
-          </button>
-        </div>
       </aside>
+
 
       {/* RIGHT MAIN CONTENT */}
       <main className="main-content">
