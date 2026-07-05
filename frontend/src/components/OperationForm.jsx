@@ -8,6 +8,7 @@ function OperationForm({ accounts, accessBank, loading, onSubmit }) {
   const [selectedSourceId, setSelectedSourceId] = useState('');
   const [selectedDestBank, setSelectedDestBank] = useState('');
   const [selectedDestId, setSelectedDestId] = useState('');
+  const [selectedDepositId, setSelectedDepositId] = useState('');
 
   // Local accounts (reside in the current accessBank)
   const localAccounts = accounts ? accounts.filter(a => a.bankCode === accessBank) : [];
@@ -25,8 +26,13 @@ function OperationForm({ accounts, accessBank, loading, onSubmit }) {
         const exists = localAccounts.some(a => a.accountId === prevSource);
         return exists ? prevSource : localAccounts[0].accountId;
       });
+      setSelectedDepositId(prevDep => {
+        const exists = localAccounts.some(a => a.accountId === prevDep);
+        return exists ? prevDep : localAccounts[0].accountId;
+      });
     } else {
       setSelectedSourceId('');
+      setSelectedDepositId('');
     }
 
     if (externalAccounts.length > 0) {
@@ -86,7 +92,7 @@ function OperationForm({ accounts, accessBank, loading, onSubmit }) {
         </h2>
       </div>
 
-      {/* 3 Tab Selector buttons shown only when operationType is 'transfer' */}
+      {/* 3 Tab Selector buttons shown ONLY when operationType is 'transfer' */}
       {operationType === 'transfer' && (
         <div className="transfer-tabs-container">
           <button 
@@ -116,31 +122,76 @@ function OperationForm({ accounts, accessBank, loading, onSubmit }) {
         </div>
       )}
 
-      <div className="form-inputs-row">
+      <div className="form-inputs-row" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
-        {/* Left Column: Operation Type and Source Account */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          <div className="input-group">
-            <span className="input-label">Tipo de Operación</span>
-            <div className="select-wrapper">
-              <select 
-                name="operationType" 
-                className="form-select" 
-                value={operationType}
-                onChange={(e) => setOperationType(e.target.value)}
-                disabled={!hasAccounts || loading}
-              >
-                <option value="deposit">Depósito (Deposit)</option>
-                <option value="withdraw">Retiro (Withdraw)</option>
-                <option value="transfer">Transferencia (Transfer)</option>
-              </select>
+        {/* Row 1: Operation Type (Always Visible) */}
+        <div className="input-group">
+          <span className="input-label">Tipo de Operación</span>
+          <div className="select-wrapper">
+            <select 
+              name="operationType" 
+              className="form-select" 
+              value={operationType}
+              onChange={(e) => setOperationType(e.target.value)}
+              disabled={!hasAccounts || loading}
+            >
+              <option value="deposit">Depósito (Deposit)</option>
+              <option value="withdraw">Retiro (Withdraw)</option>
+              <option value="transfer">Transferencia (Transfer)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Dynamic fields based on operationType */}
+
+        {/* 1. DEPOSIT: Hide source account, show target account (Cuenta a Depositar) + Amount */}
+        {operationType === 'deposit' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div className="input-group">
+              <span className="input-label">Cuenta a Depositar</span>
+              <div className="select-wrapper">
+                <select 
+                  name="targetAccountId" 
+                  className="form-select"
+                  value={selectedDepositId}
+                  onChange={(e) => setSelectedDepositId(e.target.value)}
+                  disabled={!hasAccounts || loading}
+                >
+                  {localAccounts.map((account) => (
+                    <option key={account.accountId} value={account.accountId}>
+                      {account.accountId} - {account.bankCode} (${Number(account.balance).toFixed(2)} {account.currency})
+                    </option>
+                  ))}
+                  {localAccounts.length === 0 && (
+                    <option value="">No posee cuentas locales</option>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            <div className="input-group">
+              <span className="input-label">Monto</span>
+              <div className="input-wrapper">
+                <input 
+                  name="amount" 
+                  className="form-input" 
+                  type="number" 
+                  min="0.01" 
+                  step="0.01" 
+                  placeholder="100.00" 
+                  disabled={!hasAccounts || loading} 
+                  required 
+                />
+              </div>
             </div>
           </div>
+        )}
 
-          {operationType !== 'deposit' && (
+        {/* 2. WITHDRAW: Hide target account, show source account (Cuenta de Origen) + Amount */}
+        {operationType === 'withdraw' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div className="input-group">
-              <span className="input-label">Cuenta de Origen (Source)</span>
+              <span className="input-label">Cuenta de Origen</span>
               <div className="select-wrapper">
                 <select 
                   name="sourceAccountId" 
@@ -160,35 +211,9 @@ function OperationForm({ accounts, accessBank, loading, onSubmit }) {
                 </select>
               </div>
             </div>
-          )}
 
-          {operationType === 'deposit' && (
             <div className="input-group">
-              <span className="input-label">Cuenta a Depositar</span>
-              <div className="select-wrapper">
-                <select 
-                  name="targetAccountId" 
-                  className="form-select"
-                  disabled={!hasAccounts || loading}
-                >
-                  {localAccounts.map((account) => (
-                    <option key={account.accountId} value={account.accountId}>
-                      {account.accountId} - {account.bankCode} (${Number(account.balance).toFixed(2)} {account.currency})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-        </div>
-
-        {/* Right Column: Dynamic Destination & Amount */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          {operationType === 'withdraw' && (
-            <div className="input-group">
-              <span className="input-label">Monto a Retirar (Withdraw)</span>
+              <span className="input-label">Monto</span>
               <div className="input-wrapper">
                 <input 
                   name="amount" 
@@ -202,29 +227,39 @@ function OperationForm({ accounts, accessBank, loading, onSubmit }) {
                 />
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {operationType === 'deposit' && (
-            <div className="input-group">
-              <span className="input-label">Monto a Depositar (Deposit)</span>
-              <div className="input-wrapper">
-                <input 
-                  name="amount" 
-                  className="form-input" 
-                  type="number" 
-                  min="0.01" 
-                  step="0.01" 
-                  placeholder="100.00" 
-                  disabled={!hasAccounts || loading} 
-                  required 
-                />
+        {/* 3. TRANSFER: Show BOTH Source and Destination Accounts + Amount */}
+        {operationType === 'transfer' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Row: Source and Dynamic Destination Accounts */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              
+              <div className="input-group">
+                <span className="input-label">Cuenta de Origen (Source)</span>
+                <div className="select-wrapper">
+                  <select 
+                    name="sourceAccountId" 
+                    className="form-select" 
+                    value={selectedSourceId}
+                    onChange={(e) => setSelectedSourceId(e.target.value)}
+                    disabled={!hasAccounts || loading || localAccounts.length === 0}
+                  >
+                    {localAccounts.map((account) => (
+                      <option key={account.accountId} value={account.accountId}>
+                        {account.accountId} - {account.bankCode} (${Number(account.balance).toFixed(2)} {account.currency})
+                      </option>
+                    ))}
+                    {localAccounts.length === 0 && (
+                      <option value="">No posee cuentas locales</option>
+                    )}
+                  </select>
+                </div>
               </div>
-            </div>
-          )}
 
-          {operationType === 'transfer' && (
-            <>
-              {/* Transfer mode: Own accounts */}
+              {/* Destination account field according to transferMode */}
               {transferMode === 'own' && (
                 <div className="input-group">
                   <span className="input-label">Cuenta de Destino (Propia)</span>
@@ -249,7 +284,6 @@ function OperationForm({ accounts, accessBank, loading, onSubmit }) {
                 </div>
               )}
 
-              {/* Transfer mode: Local Third-party (text input) */}
               {transferMode === 'third' && (
                 <div className="input-group">
                   <span className="input-label">Nro. de Cuenta Destino (Terceros Local)</span>
@@ -266,61 +300,63 @@ function OperationForm({ accounts, accessBank, loading, onSubmit }) {
                 </div>
               )}
 
-              {/* Transfer mode: Interbank */}
               {transferMode === 'interbank' && (
-                <>
-                  {!isInterbankDisabled ? (
-                    <>
-                      <div className="input-group">
-                        <span className="input-label">Banco de Destino</span>
-                        <div className="select-wrapper">
-                          <select 
-                            className="form-select"
-                            value={selectedDestBank}
-                            onChange={(e) => setSelectedDestBank(e.target.value)}
-                            disabled={isFormDisabled}
-                          >
-                            {externalBanks.map((bank) => (
-                              <option key={bank} value={bank}>{bank}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="input-group" style={{ marginTop: '12px' }}>
-                        <span className="input-label">Cuenta de Destino (Interbancaria)</span>
-                        <div className="select-wrapper">
-                          <select 
-                            name="targetAccountId" 
-                            className="form-select"
-                            value={selectedDestId}
-                            onChange={(e) => setSelectedDestId(e.target.value)}
-                            disabled={isFormDisabled || !selectedDestBank}
-                          >
-                            {externalAccounts.filter(a => a.bankCode === selectedDestBank).map((account) => (
-                              <option key={account.accountId} value={account.accountId}>
-                                {account.accountId} - {account.bankCode} (${Number(account.balance).toFixed(2)} {account.currency})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </>
+                <div className="input-group">
+                  <span className="input-label">Cuenta de Destino (Interbancaria)</span>
+                  {isInterbankDisabled ? (
+                    <div className="select-wrapper">
+                      <select className="form-select" disabled>
+                        <option>Sin cuentas externas</option>
+                      </select>
+                    </div>
                   ) : (
-                    <div className="input-group">
-                      <span className="input-label">Cuenta de Destino (Interbancaria)</span>
-                      <div className="select-wrapper">
-                        <select className="form-select" disabled>
-                          <option>Sin cuentas externas</option>
-                        </select>
-                      </div>
+                    <div className="select-wrapper">
+                      <select 
+                        name="targetAccountId" 
+                        className="form-select"
+                        value={selectedDestId}
+                        onChange={(e) => setSelectedDestId(e.target.value)}
+                        disabled={isFormDisabled || !selectedDestBank}
+                      >
+                        {externalAccounts.filter(a => a.bankCode === selectedDestBank).map((account) => (
+                          <option key={account.accountId} value={account.accountId}>
+                            {account.accountId} - {account.bankCode} (${Number(account.balance).toFixed(2)} {account.currency})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   )}
-                </>
+                </div>
               )}
 
-              <div className="input-group" style={{ marginTop: '12px' }}>
-                <span className="input-label">Monto (Amount)</span>
+            </div>
+
+            {/* Row: Banco de Destino (only for Interbank) and Amount */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              
+              {transferMode === 'interbank' && !isInterbankDisabled ? (
+                <div className="input-group">
+                  <span className="input-label">Banco de Destino</span>
+                  <div className="select-wrapper">
+                    <select 
+                      className="form-select"
+                      value={selectedDestBank}
+                      onChange={(e) => setSelectedDestBank(e.target.value)}
+                      disabled={isFormDisabled}
+                    >
+                      {externalBanks.map((bank) => (
+                        <option key={bank} value={bank}>{bank}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                // empty placeholder spacer
+                <div></div>
+              )}
+
+              <div className="input-group">
+                <span className="input-label">Monto</span>
                 <div className="input-wrapper">
                   <input 
                     name="amount" 
@@ -334,10 +370,11 @@ function OperationForm({ accounts, accessBank, loading, onSubmit }) {
                   />
                 </div>
               </div>
-            </>
-          )}
 
-        </div>
+            </div>
+
+          </div>
+        )}
 
       </div>
 
