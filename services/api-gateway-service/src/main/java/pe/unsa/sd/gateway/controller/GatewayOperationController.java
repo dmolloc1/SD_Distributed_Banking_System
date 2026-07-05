@@ -44,7 +44,8 @@ public class GatewayOperationController {
             return badRequest("INVALID_REQUEST");
         }
 
-        String bankUrl = bankUrls.get(extractBankFromAccount(accountId));
+        String bankId = extractBankFromAccount(accountId);
+        String bankUrl = bankId == null ? null : bankUrls.get(bankId);
         if (bankUrl == null) {
             return badRequest("INVALID_ACCOUNT");
         }
@@ -61,7 +62,8 @@ public class GatewayOperationController {
             return badRequest("INVALID_REQUEST");
         }
 
-        String bankUrl = bankUrls.get(extractBankFromAccount(accountId));
+        String bankId = extractBankFromAccount(accountId);
+        String bankUrl = bankId == null ? null : bankUrls.get(bankId);
         if (bankUrl == null) {
             return badRequest("INVALID_ACCOUNT");
         }

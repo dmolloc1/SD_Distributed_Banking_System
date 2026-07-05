@@ -1,9 +1,8 @@
 package pe.unsa.sd.persistence.adapter;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
@@ -12,10 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import pe.unsa.sd.persistence.domain.model.Account;
 import pe.unsa.sd.persistence.exception.InsufficientFundsException;
@@ -26,23 +22,12 @@ import pe.unsa.sd.persistence.journal.JournalingService;
 import pe.unsa.sd.persistence.journal.TransactionLogEntry;
 import pe.unsa.sd.persistence.locking.LockManager;
 
-@ExtendWith(MockitoExtension.class)
 class FileAccountAdapterTest {
 
-    @Mock
-    private LockManager lockManager;
-
-    @Mock
-    private AtomicFileWriter atomicFileWriter;
-
-    @Mock
-    private JournalingService journalingService;
-
-    @Mock
-    private AutoCloseable mockLock;
-
+    private FakeLockManager lockManager;
+    private FakeAtomicFileWriter atomicFileWriter;
+    private FakeJournalingService journalingService;
     private ObjectMapper objectMapper;
-
     private FileAccountAdapter adapter;
 
     @TempDir
@@ -50,126 +35,133 @@ class FileAccountAdapterTest {
 
     @BeforeEach
     void setUp() {
+        lockManager = new FakeLockManager();
+        atomicFileWriter = new FakeAtomicFileWriter();
+        journalingService = new FakeJournalingService();
         objectMapper = new ObjectMapper();
         adapter = new FileAccountAdapter(lockManager, atomicFileWriter, journalingService, objectMapper);
         ReflectionTestUtils.setField(adapter, "baseDir", tempDir.toString());
     }
 
     @Test
-    void testUpdateBalanceAtomic_Success_Credit() throws Exception {
-        // Arrange
+    void testUpdateBalanceAtomicSuccessCredit() throws Exception {
         String accountId = "12345";
-        BigDecimal initialBalance = new BigDecimal("100.00");
-        BigDecimal amount = new BigDecimal("50.00");
-        String operationType = "CREDIT";
-        String transactionId = "tx-1";
+        setupAccountFile(accountId, new BigDecimal("100.00"));
 
-        setupAccountFile(accountId, initialBalance);
-        when(lockManager.acquireExclusiveLock()).thenReturn(mockLock);
+        Account updatedAccount = adapter.updateBalanceAtomic(
+                accountId, new BigDecimal("50.00"), "CREDIT", "tx-1");
 
-        // Act
-        Account updatedAccount = adapter.updateBalanceAtomic(accountId, amount, operationType, transactionId);
-
-        // Assert
         assertNotNull(updatedAccount);
         assertEquals(new BigDecimal("150.00"), updatedAccount.getBalance());
-
-        // Verificar bloqueo
-        verify(lockManager).acquireExclusiveLock();
-        verify(mockLock).close();
-
-        // Verificar registro en journal
-        verify(journalingService).appendEntry(any(Path.class), any(TransactionLogEntry.class));
-
-        // Verificar escritura atómica
-        verify(atomicFileWriter).writeAtomic(any(Path.class), eq(updatedAccount));
+        assertEquals(1, lockManager.acquireCount);
+        assertEquals(1, lockManager.closeCount);
+        assertEquals(1, journalingService.appendCount);
+        assertEquals(1, atomicFileWriter.writeCount);
+        assertEquals(updatedAccount, atomicFileWriter.lastData);
     }
 
     @Test
-    void testUpdateBalanceAtomic_Success_Debit() throws Exception {
-        // Arrange
+    void testUpdateBalanceAtomicSuccessDebit() throws Exception {
         String accountId = "12345";
-        BigDecimal initialBalance = new BigDecimal("100.00");
-        BigDecimal amount = new BigDecimal("-50.00");
-        String operationType = "DEBIT";
-        String transactionId = "tx-2";
+        setupAccountFile(accountId, new BigDecimal("100.00"));
 
-        setupAccountFile(accountId, initialBalance);
-        when(lockManager.acquireExclusiveLock()).thenReturn(mockLock);
+        Account updatedAccount = adapter.updateBalanceAtomic(
+                accountId, new BigDecimal("-50.00"), "DEBIT", "tx-2");
 
-        // Act
-        Account updatedAccount = adapter.updateBalanceAtomic(accountId, amount, operationType, transactionId);
-
-        // Assert
         assertEquals(new BigDecimal("50.00"), updatedAccount.getBalance());
-        verify(atomicFileWriter).writeAtomic(any(Path.class), eq(updatedAccount));
+        assertEquals(1, atomicFileWriter.writeCount);
     }
 
     @Test
-    void testUpdateBalanceAtomic_InsufficientFunds_ThrowsException() throws Exception {
-        // Arrange
+    void testUpdateBalanceAtomicInsufficientFundsThrowsException() throws Exception {
         String accountId = "12345";
-        BigDecimal initialBalance = new BigDecimal("100.00");
-        BigDecimal amount = new BigDecimal("-150.00"); // Mayor que el saldo
-        String operationType = "DEBIT";
-        String transactionId = "tx-3";
+        setupAccountFile(accountId, new BigDecimal("100.00"));
 
-        setupAccountFile(accountId, initialBalance);
-        when(lockManager.acquireExclusiveLock()).thenReturn(mockLock);
+        assertThrows(InsufficientFundsException.class,
+                () -> adapter.updateBalanceAtomic(accountId, new BigDecimal("-150.00"), "DEBIT", "tx-3"));
 
-        // Act & Assert
-        assertThrows(InsufficientFundsException.class, () -> 
-            adapter.updateBalanceAtomic(accountId, amount, operationType, transactionId)
-        );
-
-        // Verificar que el bloqueo se libera
-        verify(mockLock).close();
-        
-        // Verificar que NO se llamó al journal ni a la escritura
-        verify(journalingService, never()).appendEntry(any(), any());
-        verify(atomicFileWriter, never()).writeAtomic(any(), any());
+        assertEquals(1, lockManager.closeCount);
+        assertEquals(0, journalingService.appendCount);
+        assertEquals(0, atomicFileWriter.writeCount);
     }
 
     @Test
-    void testUpdateBalanceAtomic_LockAcquisitionFails_ThrowsException() throws Exception {
-        // Arrange
-        String accountId = "12345";
-        when(lockManager.acquireExclusiveLock()).thenThrow(new LockAcquisitionException("Timeout"));
+    void testUpdateBalanceAtomicLockAcquisitionFailsThrowsException() {
+        lockManager.failOnAcquire = true;
 
-        // Act & Assert
-        assertThrows(LockAcquisitionException.class, () -> 
-            adapter.updateBalanceAtomic(accountId, new BigDecimal("10"), "CREDIT", "tx-4")
-        );
+        assertThrows(LockAcquisitionException.class,
+                () -> adapter.updateBalanceAtomic("12345", new BigDecimal("10"), "CREDIT", "tx-4"));
     }
 
     @Test
-    void testUpdateBalanceAtomic_AccountFileNotFound_ThrowsStorageException() throws Exception {
-        // Arrange
-        String accountId = "99999"; // El archivo no existe
-        when(lockManager.acquireExclusiveLock()).thenReturn(mockLock);
+    void testUpdateBalanceAtomicAccountFileNotFoundThrowsStorageException() {
+        assertThrows(StorageException.class,
+                () -> adapter.updateBalanceAtomic("99999", new BigDecimal("10"), "CREDIT", "tx-5"));
 
-        // Act & Assert
-        assertThrows(StorageException.class, () -> 
-            adapter.updateBalanceAtomic(accountId, new BigDecimal("10"), "CREDIT", "tx-5")
-        );
-        
-        verify(mockLock).close();
+        assertEquals(1, lockManager.closeCount);
     }
 
-    /**
-     * Configura un archivo de cuenta con el saldo especificado.
-     */
     private void setupAccountFile(String accountId, BigDecimal balance) throws Exception {
         Path ledgerDir = tempDir.resolve("ledger");
         Files.createDirectories(ledgerDir);
         File accountFile = ledgerDir.resolve("account_" + accountId + ".json").toFile();
-        
+
         Account account = Account.builder()
                 .accountId(accountId)
                 .balance(balance)
                 .currency("PEN")
                 .build();
-                
+
         objectMapper.writeValue(accountFile, account);
+    }
+
+    private static class FakeLockManager implements LockManager {
+        private int acquireCount;
+        private int closeCount;
+        private boolean failOnAcquire;
+
+        @Override
+        public AutoCloseable acquireExclusiveLock() throws LockAcquisitionException {
+            acquireCount++;
+            if (failOnAcquire) {
+                throw new LockAcquisitionException("Timeout");
+            }
+            return () -> closeCount++;
+        }
+
+        @Override
+        public void close() {
+        }
+    }
+
+    private static class FakeAtomicFileWriter implements AtomicFileWriter {
+        private int writeCount;
+        private Path lastPath;
+        private Object lastData;
+
+        @Override
+        public void writeAtomic(Path targetPath, Object data) {
+            writeCount++;
+            lastPath = targetPath;
+            lastData = data;
+        }
+    }
+
+    private static class FakeJournalingService implements JournalingService {
+        private int appendCount;
+        private Path lastPath;
+        private TransactionLogEntry lastEntry;
+
+        @Override
+        public void appendEntry(Path logPath, TransactionLogEntry entry) {
+            appendCount++;
+            lastPath = logPath;
+            lastEntry = entry;
+        }
+
+        @Override
+        public java.util.List<TransactionLogEntry> readHistory(Path logPath) {
+            return java.util.List.of();
+        }
     }
 }
