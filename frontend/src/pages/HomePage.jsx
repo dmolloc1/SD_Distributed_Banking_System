@@ -126,8 +126,8 @@ function HomePage() {
 
         const intervalId = setInterval(async () => {
           try {
-            const pollRes = await fetch(`http://localhost:8080/api/transfers/${txId}`);
-            const data = await pollRes.json();
+            const statusResponse = await getTransactionStatus(txId);
+            const data = statusResponse.data;
             
             if (data.status === 'COMMITTED') {
               clearInterval(intervalId);
