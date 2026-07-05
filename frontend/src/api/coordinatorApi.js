@@ -22,6 +22,17 @@ export async function submitTransfer(payload) {
   return postGatewayOperation('/api/transfers', payload);
 }
 
+export async function getTransactionStatus(transactionId) {
+  const response = await fetch(`${API_GATEWAY_BASE_URL}/api/transactions/${encodeURIComponent(transactionId)}`);
+  const data = await response.json().catch(() => ({}));
+
+  return {
+    ok: response.ok,
+    statusCode: response.status,
+    data,
+  };
+}
+
 async function postGatewayOperation(path, payload) {
   const response = await fetch(`${API_GATEWAY_BASE_URL}${path}`, {
     method: 'POST',

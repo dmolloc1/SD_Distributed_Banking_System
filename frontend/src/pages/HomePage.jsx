@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
-import { getDistributedAccounts, submitDeposit, submitTransfer, submitWithdraw } from '../api/coordinatorApi.js';
+import {
+  getDistributedAccounts,
+  getTransactionStatus,
+  submitDeposit,
+  submitTransfer,
+  submitWithdraw,
+} from '../api/coordinatorApi.js';
 import AccountSearch from '../components/AccountSearch.jsx';
 import AccountTable from '../components/AccountTable.jsx';
 import OperationForm from '../components/OperationForm.jsx';
@@ -87,11 +93,24 @@ function HomePage() {
 
     try {
       const response = await submitSelectedOperation(operationType, payload);
+
+      if (!response.ok) {
+        setOperationStatus({
+          kind: 'error',
+          message: 'La operacion fue rechazada por el sistema distribuido.',
+          details: response.data,
+        });
+        return;
+      }
+
+      if (operationType === 'transfer' && response.data?.transactionId) {
+        await pollTransferStatus(response.data.transactionId);
+        return;
+      }
+
       setOperationStatus({
-        kind: response.ok ? 'success' : 'pending',
-        message: response.ok
-          ? 'Operacion completada.'
-          : 'Ruta preparada en Gateway. Implementacion del coordinador pendiente.',
+        kind: 'success',
+        message: 'Operacion completada.',
         details: response.data,
       });
     } catch (requestError) {
@@ -112,6 +131,51 @@ function HomePage() {
       return submitWithdraw(payload);
     }
     return submitTransfer(payload);
+  }
+
+  async function pollTransferStatus(transactionId) {
+    setOperationStatus({
+      kind: 'pending',
+      message: 'Transferencia iniciada. Consultando estado de la Saga...',
+      details: { transactionId },
+    });
+
+    for (let attempt = 1; attempt <= 10; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      const statusResponse = await getTransactionStatus(transactionId);
+      const transaction = statusResponse.data;
+      const status = transaction?.status;
+
+      if (status === 'COMMITTED') {
+        setOperationStatus({
+          kind: 'success',
+          message: 'Transferencia completada por el coordinador.',
+          details: transaction,
+        });
+        return;
+      }
+
+      if (status === 'ABORTED' || status === 'COMPENSATING') {
+        setOperationStatus({
+          kind: 'error',
+          message: transaction?.message || 'La transferencia fue revertida por el coordinador.',
+          details: transaction,
+        });
+        return;
+      }
+
+      setOperationStatus({
+        kind: 'pending',
+        message: transaction?.message || `Transferencia en proceso. Intento ${attempt}/10.`,
+        details: transaction,
+      });
+    }
+
+    setOperationStatus({
+      kind: 'pending',
+      message: 'La transferencia sigue en proceso. Consulte nuevamente el estado de la transaccion.',
+      details: { transactionId },
+    });
   }
 
   // Calculate top bank cards dynamically from real loaded accounts,

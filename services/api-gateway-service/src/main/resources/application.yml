@@ -65,3 +65,10 @@ management:
     health:
       probes:
         enabled: true
+
+gateway:
+  services:
+    coordinator-url: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
+    bank-a-url: ${BANK_A_SERVICE_URL:http://localhost:8081}
+    bank-b-url: ${BANK_B_SERVICE_URL:http://localhost:8082}
+    bank-c-url: ${BANK_C_SERVICE_URL:http://localhost:8083}
