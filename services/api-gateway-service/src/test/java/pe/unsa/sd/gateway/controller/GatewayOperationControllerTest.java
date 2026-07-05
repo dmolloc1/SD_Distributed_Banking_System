@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
@@ -21,7 +22,9 @@ import org.springframework.http.ResponseEntity;
 class GatewayOperationControllerTest {
 
     private HttpServer coordinatorServer;
+    private HttpServer bankAServer;
     private HttpServer bankBServer;
+    private HttpServer bankCServer;
     private GatewayOperationController controller;
     private AtomicReference<String> coordinatorRequestBody;
     private AtomicReference<String> bankBRequestBody;
@@ -40,22 +43,55 @@ class GatewayOperationControllerTest {
             respond(exchange, 202, "{\"transactionId\":\"tx-1\",\"status\":\"PENDING\"}");
         });
 
+        bankAServer = startServer(exchange -> {
+            if ("GET".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200, "[]");
+                return;
+            }
+            respond(exchange, 404, "{}");
+        });
+
         bankBServer = startServer(exchange -> {
+            if ("GET".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200, "[{\"accountId\":\"B-2001\",\"clientId\":\"C003\",\"bankCode\":\"BANK_B\"}]");
+                return;
+            }
             bankBRequestBody.set(readBody(exchange));
             respond(exchange, 200, "{\"status\":\"SUCCESS\",\"accountId\":\"B-2001\"}");
         });
 
+        bankCServer = startServer(exchange -> {
+            if ("GET".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200, "[{\"accountId\":\"C-3001\",\"clientId\":\"C003\",\"bankCode\":\"BANK_C\"}]");
+                return;
+            }
+            respond(exchange, 404, "{}");
+        });
+
         controller = new GatewayOperationController(
-                "http://127.0.0.1:1",
+                "http://127.0.0.1:" + bankAServer.getAddress().getPort(),
                 "http://127.0.0.1:" + bankBServer.getAddress().getPort(),
-                "http://127.0.0.1:2",
+                "http://127.0.0.1:" + bankCServer.getAddress().getPort(),
                 "http://127.0.0.1:" + coordinatorServer.getAddress().getPort());
     }
 
     @AfterEach
     void tearDown() {
         coordinatorServer.stop(0);
+        bankAServer.stop(0);
         bankBServer.stop(0);
+        bankCServer.stop(0);
+    }
+
+    @Test
+    void getCustomerAccountsAggregatesAccountsFromAllBanks() {
+        ResponseEntity<List<Map<String, Object>>> response = controller.getCustomerAccounts("C003").block();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        List<Map<String, Object>> accounts = response.getBody();
+        assertEquals(2, accounts.size());
+        assertTrue(accounts.stream().anyMatch(account -> "BANK_B".equals(account.get("bankCode"))));
+        assertTrue(accounts.stream().anyMatch(account -> "BANK_C".equals(account.get("bankCode"))));
     }
 
     @Test

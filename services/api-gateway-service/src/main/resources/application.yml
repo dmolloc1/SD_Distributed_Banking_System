@@ -19,13 +19,6 @@ spring:
             allowedHeaders: "*"
             allowCredentials: true
       routes:
-        - id: coordinator-accounts
-          uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
-          predicates:
-            - Path=/api/customers/{customerId}/accounts
-          filters:
-            - RewritePath=/api/customers/(?<customerId>[^/]+)/accounts, /distributed/accounts/$\{customerId}
-
         - id: coordinator-transfers
           uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
           predicates:

@@ -2,20 +2,24 @@ package pe.unsa.sd.gateway.controller;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
+@CrossOrigin(originPatterns = {"http://localhost:*", "http://127.0.0.1:*"})
 public class GatewayOperationController {
 
     private final Map<String, String> bankUrls;
@@ -33,6 +37,19 @@ public class GatewayOperationController {
                 "BANK_C", bankCUrl);
         this.coordinatorUrl = coordinatorUrl;
         this.webClient = WebClient.create();
+    }
+
+    @GetMapping("/api/customers/{customerId}/accounts")
+    public Mono<ResponseEntity<List<Map<String, Object>>>> getCustomerAccounts(@PathVariable String customerId) {
+        return Flux.fromIterable(bankUrls.values())
+                .flatMap(bankUrl -> webClient.get()
+                        .uri(URI.create(bankUrl + "/clients/" + customerId + "/accounts"))
+                        .retrieve()
+                        .bodyToMono(new ParameterizedTypeReference<List<Map<String, Object>>>() {})
+                        .onErrorReturn(List.of()))
+                .flatMap(Flux::fromIterable)
+                .collectList()
+                .map(ResponseEntity::ok);
     }
 
     @PostMapping("/api/operations/deposit")
