@@ -13,7 +13,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -52,26 +53,35 @@ input {
   letter-spacing: 0;
 }
 
-.search-form label {
+.search-form label,
+.operation-form label {
   display: block;
-  margin-bottom: 8px;
   font-weight: 700;
 }
 
-.search-row {
-  display: flex;
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.search-row input {
+.form-grid label {
+  display: grid;
+  gap: 8px;
+}
+
+.form-grid input,
+.form-grid select {
   min-width: 0;
-  flex: 1;
   border: 1px solid #b7c6c1;
   border-radius: 6px;
   padding: 12px 14px;
+  width: 100%;
+  background: #ffffff;
 }
 
-.search-row button {
+.form-grid button {
+  align-self: end;
   border: 0;
   border-radius: 6px;
   background: #0f766e;
@@ -81,7 +91,7 @@ input {
   padding: 12px 18px;
 }
 
-.search-row button:disabled {
+.form-grid button:disabled {
   cursor: wait;
   opacity: 0.72;
 }
@@ -95,8 +105,21 @@ input {
   color: #b42318;
 }
 
-.table-wrapper {
+.account-groups {
+  display: grid;
+  gap: 22px;
   margin-top: 24px;
+}
+
+.account-group h2,
+.operation-form h2,
+.transaction-status h2 {
+  margin: 0 0 12px;
+  color: #102027;
+  font-size: 1.1rem;
+}
+
+.table-wrapper {
   overflow-x: auto;
   border: 1px solid #d9e2df;
   border-radius: 8px;
@@ -125,6 +148,41 @@ tbody tr:last-child td {
   border-bottom: 0;
 }
 
+.operation-form {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #d9e2df;
+}
+
+.transaction-status {
+  margin-top: 20px;
+  border: 1px solid #d9e2df;
+  border-radius: 8px;
+  padding: 16px;
+  background: #f8faf9;
+}
+
+.transaction-status.pending {
+  border-color: #c9b458;
+  background: #fff9db;
+}
+
+.transaction-status.error {
+  border-color: #f0b4ae;
+  background: #fff4f2;
+}
+
+.transaction-status.success {
+  border-color: #9bd3b2;
+  background: #effaf3;
+}
+
+.transaction-status pre {
+  margin: 12px 0 0;
+  overflow-x: auto;
+  font-size: 0.86rem;
+}
+
 @media (max-width: 640px) {
   .page {
     padding: 24px 12px;
@@ -134,7 +192,7 @@ tbody tr:last-child td {
     padding: 22px 16px;
   }
 
-  .search-row {
-    flex-direction: column;
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 }
