@@ -12,12 +12,14 @@ function AccountTable({ accounts }) {
   }, {});
 
   return (
-    <section className="account-groups">
+    <div className="account-groups" style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
       {Object.entries(accountsByBank).map(([bankCode, bankAccounts]) => (
-        <div className="account-group" key={bankCode}>
-          <h2>{bankCode}</h2>
-          <div className="table-wrapper">
-            <table>
+        <div className="account-group" key={bankCode} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--accent-green)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'JetBrains Mono, monospace' }}>
+            {bankCode}
+          </h3>
+          <div className="table-container">
+            <table className="activity-table">
               <thead>
                 <tr>
                   <th>accountId</th>
@@ -30,11 +32,11 @@ function AccountTable({ accounts }) {
               <tbody>
                 {bankAccounts.map((account) => (
                   <tr key={account.accountId}>
-                    <td>{account.accountId}</td>
+                    <td className="tx-id-cell">{account.accountId}</td>
                     <td>{account.clientId}</td>
                     <td>{account.type}</td>
-                    <td>{account.currency}</td>
-                    <td>{Number(account.balance).toFixed(2)}</td>
+                    <td style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-secondary)' }}>{account.currency}</td>
+                    <td className="tx-amount-cell">${Number(account.balance).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -42,7 +44,7 @@ function AccountTable({ accounts }) {
           </div>
         </div>
       ))}
-    </section>
+    </div>
   );
 }
 

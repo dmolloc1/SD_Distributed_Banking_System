@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getDistributedAccounts, submitDeposit, submitTransfer, submitWithdraw } from '../api/coordinatorApi.js';
 import AccountSearch from '../components/AccountSearch.jsx';
 import AccountTable from '../components/AccountTable.jsx';
@@ -14,6 +14,21 @@ function HomePage() {
   const [operationLoading, setOperationLoading] = useState(false);
   const [operationStatus, setOperationStatus] = useState(null);
   const [error, setError] = useState('');
+
+  // UTC clock state
+  const [timeStr, setTimeStr] = useState('');
+
+  useEffect(() => {
+    // Set digital UTC clock in real-time
+    const updateTime = () => {
+      const now = new Date();
+      const utcStr = now.toISOString().slice(11, 19) + ' UTC';
+      setTimeStr(utcStr);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -99,14 +114,198 @@ function HomePage() {
     return submitTransfer(payload);
   }
 
+  // Calculate top bank cards dynamically from real loaded accounts,
+  // or show the mockup values from image.png as visual defaults on mount
+  const hasAccounts = accounts && accounts.length > 0;
+  const bankATotal = hasAccounts
+    ? accounts.filter(a => a.bankCode === 'BANK_A').reduce((sum, a) => sum + Number(a.balance), 0)
+    : 1300.00;
+  const bankBTotal = hasAccounts
+    ? accounts.filter(a => a.bankCode === 'BANK_B').reduce((sum, a) => sum + Number(a.balance), 0)
+    : 450.50;
+  const bankCTotal = hasAccounts
+    ? accounts.filter(a => a.bankCode === 'BANK_C').reduce((sum, a) => sum + Number(a.balance), 0)
+    : 2100.25;
+  
+  const totalLiquidValue = bankATotal + bankBTotal + bankCTotal;
+
+  // Static mockup transactions table matching the screenshot row-for-row
+  const mockTransactions = [
+    { id: 'TX-7732-A', from: 'BANK_A', to: 'BANK_B', amount: 12000.00, timestamp: '2025-11-24 05:12:33', status: 'COMMITTED' },
+    { id: 'TX-7714-C', from: 'BANK_C', to: 'BANK_A', amount: 1450.25, timestamp: '2025-11-24 08:45:01', status: 'COMMITTED' },
+  ];
+
   return (
-    <main className="page">
-      <section className="panel">
-        <div className="header">
-          <span>Sistema Bancario Distribuido</span>
-          <h1>Consulta consolidada de cuentas</h1>
+    <div className="app-container">
+      
+      {/* LEFT SIDEBAR */}
+      <aside className="sidebar">
+        <div>
+          <div className="sidebar-logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="12" cy="12" r="3" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.5-6.5l-2 2m-7 7l-2 2m0-11l2 2m7 7l2-2" />
+            </svg>
+            <span>Ledger</span>
+          </div>
+
+          <div className="sidebar-profile">
+            <div className="profile-avatar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div className="profile-info">
+              <span className="profile-name">Interbank Admin</span>
+              <span className="profile-role">Sx62...73a</span>
+            </div>
+          </div>
+
+          <nav className="sidebar-menu">
+            <span className="menu-item active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+              </svg>
+              Dashboard
+            </span>
+            <span className="menu-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              Accounts
+            </span>
+            <span className="menu-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              Transfers
+            </span>
+            <span className="menu-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+              </svg>
+              Ledger Explorer
+            </span>
+            <span className="menu-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              Security
+            </span>
+            <span className="menu-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Settings
+            </span>
+          </nav>
         </div>
 
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={() => alert('Cerrando sesión de administrador')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Logout Session
+          </button>
+        </div>
+      </aside>
+
+      {/* RIGHT MAIN CONTENT */}
+      <main className="main-content">
+        
+        {/* TOP BAR */}
+        <header className="top-bar">
+          <div className="network-status-container">
+            <div className="network-status-divider"></div>
+            <div className="bank-status">
+              <span className="bank-node-status">
+                <span className="node-dot"></span>
+                BANK A
+              </span>
+              <span className="bank-node-status">
+                <span className="node-dot"></span>
+                BANK B
+              </span>
+              <span className="bank-node-status">
+                <span className="node-dot"></span>
+                BANK C
+              </span>
+            </div>
+          </div>
+
+        </header>
+
+        {/* ASSET DISTRIBUTION PANEL */}
+        <section className="dashboard-panel">
+          <div className="panel-header-row">
+            <div className="panel-title-group">
+              <span className="panel-subtitle">Asset Distribution</span>
+              <h1 className="panel-title">Multi-Bank Consolidated Portfolio</h1>
+            </div>
+            
+            <div className="portfolio-value-group">
+              <div className="portfolio-value-label">Total Liquid Value</div>
+              <div className="portfolio-value">
+                {totalLiquidValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span className="portfolio-currency">USD</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bank-cards-grid">
+            <div className="bank-card">
+              <div className="bank-card-header">
+                <span className="bank-card-title">Bank A Consolidated</span>
+                <div className="bank-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+              </div>
+              <div className="bank-card-body">
+                <div className="bank-card-amount">${bankATotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="bank-card-code">D091...220</div>
+              </div>
+            </div>
+
+            <div className="bank-card">
+              <div className="bank-card-header">
+                <span className="bank-card-title">Bank B Global</span>
+                <div className="bank-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                </div>
+              </div>
+              <div className="bank-card-body">
+                <div className="bank-card-amount">${bankBTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="bank-card-code">0Xb4...50a</div>
+              </div>
+            </div>
+
+            <div className="bank-card">
+              <div className="bank-card-header">
+                <span className="bank-card-title">Bank C Reserve</span>
+                <div className="bank-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="bank-card-body">
+                <div className="bank-card-amount">${bankCTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="bank-card-code">B053...21s</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ACCOUNT SEARCH FORM */}
         <AccountSearch
           accessBank={accessBank}
           clientId={clientId}
@@ -116,22 +315,85 @@ function HomePage() {
           onSubmit={handleSubmit}
         />
 
-        {error && <p className="message error">{error}</p>}
+        {error && (
+          <div className="status-section error" style={{ marginBottom: '24px' }}>
+            <p className="status-message">{error}</p>
+          </div>
+        )}
+        
         {!error && searched && !loading && accounts.length === 0 && (
-          <p className="message">No se encontraron cuentas para el cliente consultado.</p>
+          <div className="status-section info" style={{ marginBottom: '24px' }}>
+            <p className="status-message">No se encontraron cuentas para el cliente consultado.</p>
+          </div>
         )}
 
-        <AccountTable accounts={accounts} />
+        {/* INTERACTION PANEL: ACCOUNTS TABLE & OPERATIONS FORM */}
+        {searched && !loading && accounts.length > 0 && (
+          <section className="operations-panel" style={{ gap: '24px' }}>
+            <div className="panel-title-group">
+              <span className="panel-subtitle">Consulta consolidada</span>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Cuentas del Cliente: {clientId}
+              </h2>
+            </div>
+
+            <AccountTable accounts={accounts} />
+          </section>
+        )}
+
         <OperationForm
           accessBank={accessBank}
           accounts={accounts}
           loading={operationLoading}
           onSubmit={handleOperationSubmit}
         />
+
         <TransactionStatus status={operationStatus} />
-      </section>
-    </main>
+
+        {/* RECENT LEDGER ACTIVITY */}
+        <section className="ledger-activity-panel">
+          <div className="activity-header">
+            <h3 className="activity-title">Recent Ledger Activity</h3>
+            <span className="view-logs-link" onClick={() => alert('Mostrando logs históricos del Ledger')}>View All Logs</span>
+          </div>
+
+          <div className="table-container">
+            <table className="activity-table">
+              <thead>
+                <tr>
+                  <th>Transaction ID</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Amount</th>
+                  <th>Timestamp</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mockTransactions.map((tx) => (
+                  <tr key={tx.id}>
+                    <td className="tx-id-cell">{tx.id}</td>
+                    <td className="tx-bank-cell">{tx.from}</td>
+                    <td className="tx-bank-cell">{tx.to}</td>
+                    <td className="tx-amount-cell">${Number(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td className="tx-time-cell">{tx.timestamp}</td>
+                    <td>
+                      <span className={`status-badge ${tx.status.toLowerCase()}`}>
+                        {tx.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+    </div>
   );
 }
 
 export default HomePage;
+
+
