@@ -4,7 +4,7 @@
   "bankCode" : "BANK_A",
   "type" : "AHORROS",
   "currency" : "PEN",
-  "balance" : 1400.0
+  "balance" : 1350.0
 }, {
   "accountId" : "A-1002",
   "clientId" : "C001",
