@@ -72,7 +72,10 @@ curl http://localhost:8080/api/bank-a/health
 curl http://localhost:8080/api/bank-b/health
 curl http://localhost:8080/api/bank-c/health
 curl http://localhost:8080/api/customers/C005/accounts
-curl http://localhost:8080/api/v1/orchestrator/transfers
+curl -X POST http://localhost:8080/api/operations/deposit
+curl -X POST http://localhost:8080/api/operations/withdraw
+curl -X POST http://localhost:8080/api/transfers
+curl http://localhost:8080/api/transactions/{transactionId}
 curl http://localhost:8081/api/v1/bank/accounts/C001/debit
 ```
 
@@ -91,9 +94,9 @@ curl http://localhost:8083/clients/C003/accounts
 curl http://localhost:8090/distributed/accounts/C005
 ```
 
-## Endpoints preparados pendientes
+## Endpoints de operaciones por Gateway
 
-El API Gateway expone estos contratos publicos como esqueleto. Actualmente responden `501 Not Implemented` hasta que el coordinator-service implemente la logica transaccional.
+El API Gateway expone contratos publicos para depositos, retiros, transferencias y consulta del estado de la transaccion. El frontend consume estas rutas y no invoca directamente a los bancos ni al coordinador.
 
 ```bash
 curl -X POST http://localhost:8080/api/operations/deposit
@@ -101,6 +104,8 @@ curl -X POST http://localhost:8080/api/operations/withdraw
 curl -X POST http://localhost:8080/api/transfers
 curl http://localhost:8080/api/transactions/TX-001
 ```
+
+En transferencias, el gateway deriva el banco origen y destino desde el prefijo de la cuenta (`A-`, `B-`, `C-`) y envia la solicitud al coordinator-service. El coordinador inicia una Saga asincrona y devuelve un `transactionId`; luego el frontend consulta `/api/transactions/{transactionId}` hasta obtener estado final.
 
 ## Flujo actual
 
@@ -116,7 +121,5 @@ El frontend consume solamente el API Gateway en `http://localhost:8080`.
 
 ## Pendiente
 
-- Implementar depositos, retiros, transferencias, reserva, confirmacion y rollback.
-- Integrar los bancos con `common-persistence`.
 - Agregar Dockerfile por servicio y `docker-compose.yml`.
-- Agregar pruebas automatizadas de Gateway e integracion.
+- Agregar pruebas automatizadas de integracion extremo a extremo.

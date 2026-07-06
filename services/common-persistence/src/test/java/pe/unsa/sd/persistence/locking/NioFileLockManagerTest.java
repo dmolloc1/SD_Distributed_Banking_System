@@ -22,7 +22,7 @@ class NioFileLockManagerTest {
   @BeforeEach
   void setUp() {
     lockFilePath = tempDir.resolve(".accounts.json.lock").toString();
-    lockManager = new NioFileLockManager(lockFilePath);
+    lockManager = new NioFileLockManager(lockFilePath, 2000);
   }
 
   @Test

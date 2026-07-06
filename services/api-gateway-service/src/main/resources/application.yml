@@ -7,26 +7,24 @@ spring:
   cloud:
     gateway:
       globalcors:
-        cors-configurations:
+        corsConfigurations:
           '[/**]':
-            allowedOrigins:
-              - http://localhost:5173
+            allowedOrigins: "http://localhost:5173"
             allowedMethods:
               - GET
               - POST
               - PUT
               - DELETE
               - OPTIONS
-            allowedHeaders:
-              - '*'
-            allowCredentials: false
+            allowedHeaders: "*"
+            allowCredentials: true
       routes:
-        - id: coordinator-accounts
+        - id: coordinator-transfers
           uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
           predicates:
-            - Path=/api/customers/{customerId}/accounts
+            - Path=/api/transfers/{transactionId}
           filters:
-            - RewritePath=/api/customers/(?<customerId>[^/]+)/accounts, /distributed/accounts/$\{customerId}
+            - RewritePath=/api/transfers/(?<transactionId>[^/]+), /api/v1/orchestrator/transfers/$\{transactionId}
 
         - id: coordinator-health
           uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
@@ -65,3 +63,10 @@ management:
     health:
       probes:
         enabled: true
+
+gateway:
+  services:
+    coordinator-url: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
+    bank-a-url: ${BANK_A_SERVICE_URL:http://localhost:8081}
+    bank-b-url: ${BANK_B_SERVICE_URL:http://localhost:8082}
+    bank-c-url: ${BANK_C_SERVICE_URL:http://localhost:8083}
