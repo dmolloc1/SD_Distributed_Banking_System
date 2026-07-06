@@ -285,7 +285,7 @@ function HomePage() {
               <circle cx="12" cy="12" r="3" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.5-6.5l-2 2m-7 7l-2 2m0-11l2 2m7 7l2-2" />
             </svg>
-            <span>Ledger</span>
+            <span>LUCA</span>
           </div>
 
           <nav className="sidebar-menu">
@@ -298,37 +298,7 @@ function HomePage() {
               </svg>
               Dashboard
             </span>
-            <span className="menu-item">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              Accounts
-            </span>
-            <span className="menu-item">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-              Transfers
-            </span>
-            <span className="menu-item">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-              </svg>
-              Ledger Explorer
-            </span>
-            <span className="menu-item">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              Security
-            </span>
-            <span className="menu-item">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Settings
-            </span>
+            
           </nav>
         </div>
       </aside>
@@ -359,7 +329,29 @@ function HomePage() {
 
         </header>
 
-        {/* ASSET DISTRIBUTION PANEL */}
+        {/* 1. ACCOUNT SEARCH FORM (arriba, primero) */}
+        <AccountSearch
+          accessBank={accessBank}
+          clientId={clientId}
+          loading={loading}
+          onAccessBankChange={setAccessBank}
+          onClientIdChange={setClientId}
+          onSubmit={handleSubmit}
+        />
+
+        {error && (
+          <div className="status-section error" style={{ marginBottom: '24px' }}>
+            <p className="status-message">{error}</p>
+          </div>
+        )}
+
+        {!error && searched && !loading && accounts.length === 0 && (
+          <div className="status-section info" style={{ marginBottom: '24px' }}>
+            <p className="status-message">No se encontraron cuentas para el cliente consultado.</p>
+          </div>
+        )}
+
+        {/* 2. ASSET DISTRIBUTION PANEL (Bank A / Bank B / Bank C / Total) */}
         <section className="dashboard-panel">
           <div className="panel-header-row">
             <div className="panel-title-group">
@@ -422,52 +414,58 @@ function HomePage() {
           </div>
         </section>
 
-        {/* ACCOUNT SEARCH FORM */}
-        <AccountSearch
-          accessBank={accessBank}
-          clientId={clientId}
-          loading={loading}
-          onAccessBankChange={setAccessBank}
-          onClientIdChange={setClientId}
-          onSubmit={handleSubmit}
-        />
-
-        {error && (
-          <div className="status-section error" style={{ marginBottom: '24px' }}>
-            <p className="status-message">{error}</p>
-          </div>
-        )}
-        
-        {!error && searched && !loading && accounts.length === 0 && (
-          <div className="status-section info" style={{ marginBottom: '24px' }}>
-            <p className="status-message">No se encontraron cuentas para el cliente consultado.</p>
-          </div>
-        )}
-
-        {/* INTERACTION PANEL: ACCOUNTS TABLE & OPERATIONS FORM */}
-        {searched && !loading && accounts.length > 0 && (
-          <section className="operations-panel" style={{ gap: '24px' }}>
-            <div className="panel-title-group">
-              <span className="panel-subtitle">Consulta consolidada</span>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Cuentas del Cliente: {clientId}
-              </h2>
+        {/* 3. FILA: CUENTAS (izquierda) + EJECUTAR OPERACION (derecha), lado a lado */}
+        <section
+          className="accounts-and-operation-row"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '24px',
+            alignItems: 'flex-start',
+            marginBottom: '24px',
+          }}
+        >
+          {/* Columna izquierda: tabla de cuentas */}
+          {/* Columna izquierda: tabla de cuentas (siempre visible, con estado vacio) */}
+          <div style={{ flex: '1 1 480px', minWidth: '320px' }}>
+            <div className="operations-panel" style={{ gap: '24px' }}>
+              <div className="panel-title-group">
+                <span className="panel-subtitle">Consulta consolidada</span>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {searched && clientId.trim() ? `Cuentas del Cliente: ${clientId}` : 'Cuentas del Cliente'}
+                </h2>
+              </div>
+ 
+              {loading && (
+                <p className="status-message">Consultando cuentas...</p>
+              )}
+ 
+              {!loading && searched && accounts.length > 0 && (
+                <AccountTable accounts={accounts} />
+              )}
+ 
+              {!loading && (!searched || accounts.length === 0) && (
+                <p className="status-message" style={{ color: 'var(--text-secondary)' }}>
+                  Falta realizar la consulta. Ingrese un clientId y presione "Consultar" para ver las cuentas aqui.
+                </p>
+              )}
             </div>
+          </div>
 
-            <AccountTable accounts={accounts} />
-          </section>
-        )}
+          {/* Columna derecha: formulario de operacion + estado */}
+          <div style={{ flex: '1 1 380px', minWidth: '320px' }}>
+            <OperationForm
+              accessBank={accessBank}
+              accounts={accounts}
+              loading={operationLoading}
+              onSubmit={handleOperationSubmit}
+            />
 
-        <OperationForm
-          accessBank={accessBank}
-          accounts={accounts}
-          loading={operationLoading}
-          onSubmit={handleOperationSubmit}
-        />
+            <TransactionStatus status={operationStatus} />
+          </div>
+        </section>
 
-        <TransactionStatus status={operationStatus} />
-
-        {/* RECENT LEDGER ACTIVITY */}
+        {/* 4. RECENT LEDGER ACTIVITY (abajo, historial) */}
         <section className="ledger-activity-panel">
           <div className="activity-header">
             <h3 className="activity-title">Recent Ledger Activity</h3>
@@ -512,5 +510,3 @@ function HomePage() {
 }
 
 export default HomePage;
-
-
