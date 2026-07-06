@@ -3,6 +3,7 @@ package pe.unsa.sd.banka.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
@@ -34,11 +35,11 @@ public class FileAccountService {
         Account account = findByAccountId(accounts, accountId)
                 .orElseThrow(() -> new IllegalArgumentException("ACCOUNT_NOT_FOUND"));
 
-        if (account.getBalance() < amount) {
+        if (account.getBalance().compareTo(BigDecimal.valueOf(amount)) < 0) {
             throw new IllegalStateException("INSUFFICIENT_FUNDS");
         }
 
-        account.setBalance(account.getBalance() - amount);
+        account.setBalance(account.getBalance().subtract(BigDecimal.valueOf(amount)));
         writeAllAccounts(accounts);
         return account;
     }
@@ -49,7 +50,7 @@ public class FileAccountService {
         Account account = findByAccountId(accounts, accountId)
                 .orElseThrow(() -> new IllegalArgumentException("ACCOUNT_NOT_FOUND"));
 
-        account.setBalance(account.getBalance() + amount);
+        account.setBalance(account.getBalance().add(BigDecimal.valueOf(amount)));
         writeAllAccounts(accounts);
         return account;
     }

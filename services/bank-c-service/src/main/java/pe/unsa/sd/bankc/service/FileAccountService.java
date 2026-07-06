@@ -55,7 +55,8 @@ public class FileAccountService {
     }
 
     private List<Account> readAllAccounts() throws IOException {
-        return objectMapper.readValue(accountsPath.toFile(), new TypeReference<List<Account>>() {});
+        return objectMapper.readValue(accountsPath.toFile(), new TypeReference<List<Account>>() {
+        });
     }
 
     private void writeAllAccounts(List<Account> accounts) throws IOException {
