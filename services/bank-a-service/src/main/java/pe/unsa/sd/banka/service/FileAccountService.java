@@ -22,9 +22,24 @@ public class FileAccountService {
         this.accountsPath = Path.of(accountsFile);
     }
 
+    public List<Account> findAllAccounts() throws IOException {
+        return objectMapper.readValue(accountsPath.toFile(), new TypeReference<List<Account>>() {});
+    }
+
+    public Account findAccountById(String accountId) throws IOException {
+        return findAllAccounts().stream()
+                .filter(account -> accountId.equals(account.getAccountId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Cuenta no encontrada: " + accountId));
+    }
+
+    public Path getAccountsPath() {
+        return accountsPath;
+    }
+
     public List<Account> findAccountsByClientId(String clientId) throws IOException {
-        List<Account> accounts = readAllAccounts();
-        return accounts.stream()
+
+        return findAllAccounts().stream()
                 .filter(account -> clientId.equals(account.getClientId()))
                 .toList();
     }
