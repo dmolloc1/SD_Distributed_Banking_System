@@ -65,6 +65,8 @@ management:
         enabled: true
 
 gateway:
+  grpc:
+    port: ${GATEWAY_GRPC_PORT:9090}
   services:
     coordinator-url: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
     bank-a-url: ${BANK_A_SERVICE_URL:http://localhost:8081}

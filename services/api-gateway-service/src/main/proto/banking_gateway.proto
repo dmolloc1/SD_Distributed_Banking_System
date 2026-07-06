@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package pe.unsa.sd.gateway;
+
+option java_multiple_files = true;
+option java_package = "pe.unsa.sd.gateway.grpc";
+option java_outer_classname = "BankingGatewayProto";
+
+service BankingGateway {
+  rpc GetCustomerAccounts(CustomerAccountsRequest) returns (CustomerAccountsResponse);
+  rpc Deposit(OperationRequest) returns (OperationResponse);
+  rpc Withdraw(OperationRequest) returns (OperationResponse);
+  rpc Transfer(TransferRequest) returns (TransferResponse);
+  rpc GetTransactionStatus(TransactionStatusRequest) returns (TransactionStatusResponse);
+}
+
+message CustomerAccountsRequest {
+  string customer_id = 1;
+}
+
+message CustomerAccountsResponse {
+  repeated Account accounts = 1;
+  int32 http_status = 2;
+  string error = 3;
+}
+
+message Account {
+  string account_id = 1;
+  string client_id = 2;
+  string bank_code = 3;
+  string type = 4;
+  string currency = 5;
+  string balance = 6;
+}
+
+message OperationRequest {
+  string account_id = 1;
+  string amount = 2;
+  string currency = 3;
+}
+
+message OperationResponse {
+  string status = 1;
+  string account_id = 2;
+  string balance = 3;
+  string transaction_id = 4;
+  string error = 5;
+  string message = 6;
+  int32 http_status = 7;
+}
+
+message TransferRequest {
+  string source_account_id = 1;
+  string target_account_id = 2;
+  string amount = 3;
+  string currency = 4;
+}
+
+message TransferResponse {
+  string transaction_id = 1;
+  string status = 2;
+  string message = 3;
+  string error = 4;
+  int32 http_status = 5;
+}
+
+message TransactionStatusRequest {
+  string transaction_id = 1;
+}
+
+message TransactionStatusResponse {
+  string transaction_id = 1;
+  string status = 2;
+  string message = 3;
+  string error = 4;
+  string source_account_id = 5;
+  string source_bank_id = 6;
+  string destination_account_id = 7;
+  string destination_bank_id = 8;
+  string amount = 9;
+  int32 current_step = 10;
+  int32 total_steps = 11;
+  string initiated_at = 12;
+  string completed_at = 13;
+  repeated SagaStep steps = 14;
+  int32 http_status = 15;
+}
+
+message SagaStep {
+  string step_id = 1;
+  int32 step_number = 2;
+  string bank_id = 3;
+  string account_id = 4;
+  string operation_type = 5;
+  string amount = 6;
+  string step_status = 7;
+  string executed_at = 8;
+  string error_message = 9;
+  bool compensation_applied = 10;
+  string compensation_timestamp = 11;
+}
