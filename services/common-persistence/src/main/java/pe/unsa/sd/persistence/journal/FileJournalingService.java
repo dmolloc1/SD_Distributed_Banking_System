@@ -22,16 +22,18 @@ public class FileJournalingService implements JournalingService {
   @Override
   public void appendEntry(Path logPath, TransactionLogEntry entry) {
     try {
-      // Asegurar directorios
       if (logPath.getParent() != null) {
         Files.createDirectories(logPath.getParent());
       }
 
-      // Calcular Checksum antes de escribir
+      // Blockchain chaining: leer el hash de la ultima entrada del ledger
+      String previousHash = getLastChecksum(logPath);
+      entry.setPreviousHash(previousHash);
+
+      // Calcular checksum SHA-256 incluyendo el previousHash
       String checksum = calculateChecksum(entry);
       entry.setChecksum(checksum);
 
-      // Escritura Append-Only
       try (BufferedWriter writer =
           Files.newBufferedWriter(
               logPath,
@@ -41,10 +43,23 @@ public class FileJournalingService implements JournalingService {
 
         writer.write(entry.toLogLine());
         writer.newLine();
-        log.debug("Entrada de auditoría registrada: TX={}", entry.getTransactionId());
+        log.debug("Entrada de auditoria registrada: TX={} hash={}", entry.getTransactionId(), checksum);
       }
     } catch (IOException | NoSuchAlgorithmException e) {
       throw new StorageException("Error al escribir en el log de transacciones", e);
+    }
+  }
+
+  // Lee la ultima linea del ledger y extrae su checksum para encadenamiento blockchain
+  private String getLastChecksum(Path logPath) throws IOException {
+    if (!Files.exists(logPath) || Files.size(logPath) == 0) {
+      return null; // Genesis block - no previous hash
+    }
+    try (var lines = Files.lines(logPath)) {
+      String lastLine = lines.reduce((first, second) -> second).orElse(null);
+      if (lastLine == null || lastLine.isBlank()) return null;
+      String[] parts = lastLine.split(" \\| ");
+      return parts.length >= 8 ? parts[7] : null; // previousHash/checksum esta en la columna 8
     }
   }
 
@@ -59,16 +74,16 @@ public class FileJournalingService implements JournalingService {
     }
   }
 
+  // SHA-256 sobre: txId + accountId + operationType + amount + prevBalance + newBalance + previousHash
   private String calculateChecksum(TransactionLogEntry e) throws NoSuchAlgorithmException {
-    String rawData =
-        String.format(
-            "%s%s%s%s%s%s",
-            e.getTransactionId(),
-            e.getAccountId(),
-            e.getOperationType(),
-            e.getAmount(),
-            e.getPreviousBalance(),
-            e.getNewBalance());
+    String rawData = String.format("%s%s%s%s%s%s%s",
+        e.getTransactionId(),
+        e.getAccountId(),
+        e.getOperationType(),
+        e.getAmount(),
+        e.getPreviousBalance(),
+        e.getNewBalance(),
+        e.getPreviousHash() == null ? "" : e.getPreviousHash());
 
     MessageDigest digest = MessageDigest.getInstance("SHA-256");
     byte[] hash = digest.digest(rawData.getBytes(StandardCharsets.UTF_8));
@@ -78,6 +93,7 @@ public class FileJournalingService implements JournalingService {
 
   private TransactionLogEntry parseLogLine(String line) {
     String[] parts = line.split(" \\| ");
+    String previousHash = "GENESIS".equals(parts[7]) ? null : parts[7];
     return TransactionLogEntry.builder()
         .timestamp(java.time.LocalDateTime.parse(parts[0]))
         .transactionId(parts[1])
@@ -86,7 +102,8 @@ public class FileJournalingService implements JournalingService {
         .amount(new java.math.BigDecimal(parts[4]))
         .previousBalance(new java.math.BigDecimal(parts[5]))
         .newBalance(new java.math.BigDecimal(parts[6]))
-        .checksum(parts[7])
+        .previousHash(previousHash)
+        .checksum(parts[8])
         .build();
   }
 }

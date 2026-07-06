@@ -5,7 +5,8 @@ import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Data;
 
-/** Representa una entrada inmutable en el registro de auditoría (Ledger). */
+// Encadenamiento tipo blockchain: cada entrada guarda el hash SHA-256 de la anterior,
+// formando una cadena inmutable que permite detectar manipulaciones.
 @Data
 @Builder
 public class TransactionLogEntry {
@@ -16,12 +17,12 @@ public class TransactionLogEntry {
   private BigDecimal amount;
   private BigDecimal previousBalance;
   private BigDecimal newBalance;
-  private String checksum;
+  private String previousHash; // Hash SHA-256 de la entrada anterior (blockchain chaining)
+  private String checksum;     // Hash SHA-256 de esta entrada (incluye previousHash)
 
-  /** Genera una cadena formateada para persistencia en texto plano. */
   public String toLogLine() {
     return String.format(
-        "%s | %s | %s | %s | %s | %s | %s | %s",
+        "%s | %s | %s | %s | %s | %s | %s | %s | %s",
         timestamp,
         transactionId,
         accountId,
@@ -29,6 +30,7 @@ public class TransactionLogEntry {
         amount,
         previousBalance,
         newBalance,
+        previousHash == null ? "GENESIS" : previousHash,
         checksum);
   }
 }

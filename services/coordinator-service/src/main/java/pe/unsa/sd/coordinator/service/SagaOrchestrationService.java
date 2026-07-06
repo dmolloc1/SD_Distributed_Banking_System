@@ -43,45 +43,62 @@ public class SagaOrchestrationService {
         this.bankCUrl = bankCUrl;
     }
 
+    // Ejecuta la saga generando un nuevo transactionId
     public SagaTransactionDTO executeSaga(TransferRequest request) {
-        SagaTransaction saga = buildSaga(request);
+        return executeSaga(request, UUID.randomUUID().toString());
+    }
 
-        log.info("SAGA INICIADA ___________________txId={}", saga.getTransactionId());
+    // Ejecuta la saga con un transactionId predefinido (para async polling)
+    public SagaTransactionDTO executeSaga(TransferRequest request, String transactionId) {
+        SagaTransaction saga = buildSaga(request, transactionId);
 
+        log.info("=== SAGA INICIADA === txId={} origen={} destino={} monto={}",
+                saga.getTransactionId(), request.getOriginAccountId(),
+                request.getDestinationAccountId(), request.getAmount());
+
+        // --- STEP 1: DEBIT en banco origen ---
         saga.setStatus(SagaStatus.EXECUTING_STEP_1);
+        saga.setMessage("Debitando fondos de cuenta origen...");
         SagaStep step1 = saga.getSteps().get(0);
         executeStep(saga.getTransactionId(), step1, request.getCurrency());
         if (step1.getStepStatus() != SagaStepStatus.SUCCESS) {
             saga.setStatus(SagaStatus.ABORTED);
             saga.setError("STEP_1_FAILED");
+            saga.setMessage("Error al debitar fondos de cuenta origen");
             saga.setCompletedAt(OffsetDateTime.now());
-            log.info("SAGA ABORTED ______________ txId={} reason=STEP_1_FAILED", saga.getTransactionId());
+            log.info("=== SAGA ABORTED === txId={} reason=STEP_1_FAILED", saga.getTransactionId());
             return toDto(saga);
         }
 
+        // --- STEP 2: CREDIT en banco destino ---
         saga.setStatus(SagaStatus.EXECUTING_STEP_2);
+        saga.setMessage("Acreditando fondos a cuenta destino...");
         SagaStep step2 = saga.getSteps().get(1);
         executeStep(saga.getTransactionId(), step2, request.getCurrency());
 
         if (step2.getStepStatus() != SagaStepStatus.SUCCESS) {
-            log.warn("Starting compensation txId={}", saga.getTransactionId());
+            log.warn("Step 2 fallo, iniciando compensacion txId={}", saga.getTransactionId());
+            saga.setMessage("Error en credito, revirtiendo operacion...");
             executeCompensation(saga, 2, request.getCurrency());
             saga.setStatus(SagaStatus.ABORTED);
             saga.setError("STEP_2_FAILED");
+            saga.setMessage("Transferencia fallida - fondos devueltos a cuenta origen");
             saga.setCompletedAt(OffsetDateTime.now());
-            log.info("=== SAGA ABORTED === txId={} reason=STEP_2_FAILED", saga.getTransactionId());
+            log.info("=== SAGA ABORTED === txId={} reason=STEP_2_FAILED compensation=OK", saga.getTransactionId());
             return toDto(saga);
         }
 
+        // --- EXITO: ambos pasos completados ---
         saga.setStatus(SagaStatus.COMMITTED);
+        saga.setMessage("Transferencia completada exitosamente");
         saga.setCompletedAt(OffsetDateTime.now());
-        log.info("_________SAGA COMMITTED ________txId={}", saga.getTransactionId());
+        log.info("=== SAGA COMMITTED === txId={}", saga.getTransactionId());
         return toDto(saga);
     }
 
-    private SagaTransaction buildSaga(TransferRequest request) {
+    private SagaTransaction buildSaga(TransferRequest request, String transactionId) {
         SagaTransaction saga = new SagaTransaction();
-        saga.setTransactionId(UUID.randomUUID().toString());
+        saga.setTransactionId(transactionId);
         saga.setSourceAccountId(request.getOriginAccountId());
         saga.setSourceBankId(BankId.fromText(request.getOriginBankId()));
         saga.setDestinationAccountId(request.getDestinationAccountId());
@@ -208,6 +225,9 @@ public class SagaOrchestrationService {
         dto.setDestinationBankId(saga.getDestinationBankId().name());
         dto.setAmount(saga.getAmount());
         dto.setStatus(saga.getStatus().name());
+        dto.setMessage(saga.getMessage());
+        dto.setTotalSteps(saga.getSteps().size());
+        dto.setCurrentStep(saga.getSteps().size());
         dto.setInitiatedAt(saga.getInitiatedAt());
         dto.setCompletedAt(saga.getCompletedAt());
         dto.setError(saga.getError());

@@ -14,6 +14,9 @@ public class SagaTransactionDTO {
     private String destinationBankId;
     private BigDecimal amount;
     private String status;
+    private String message;        // Human-readable status for frontend
+    private int currentStep;       // Current step being executed (0 = not started)
+    private int totalSteps;        // Total steps in the saga (typically 2)
     private OffsetDateTime initiatedAt;
     private OffsetDateTime completedAt;
     private String error;
@@ -76,6 +79,30 @@ public class SagaTransactionDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public int getCurrentStep() {
+        return currentStep;
+    }
+
+    public void setCurrentStep(int currentStep) {
+        this.currentStep = currentStep;
+    }
+
+    public int getTotalSteps() {
+        return totalSteps;
+    }
+
+    public void setTotalSteps(int totalSteps) {
+        this.totalSteps = totalSteps;
     }
 
     public OffsetDateTime getInitiatedAt() {
