@@ -20,39 +20,46 @@ spring:
             allowCredentials: true
       routes:
         - id: coordinator-transfers
-          uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
+          uri: lb://coordinator-service
           predicates:
             - Path=/api/transfers/{transactionId}
           filters:
             - RewritePath=/api/transfers/(?<transactionId>[^/]+), /api/v1/orchestrator/transfers/$\{transactionId}
 
         - id: coordinator-health
-          uri: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
+          uri: lb://coordinator-service
           predicates:
             - Path=/api/coordinator/health
           filters:
             - SetPath=/distributed/health
 
         - id: bank-a-health
-          uri: ${BANK_A_SERVICE_URL:http://localhost:8081}
+          uri: lb://bank-a-service
           predicates:
             - Path=/api/bank-a/health
           filters:
             - SetPath=/health
 
         - id: bank-b-health
-          uri: ${BANK_B_SERVICE_URL:http://localhost:8082}
+          uri: lb://bank-b-service
           predicates:
             - Path=/api/bank-b/health
           filters:
             - SetPath=/health
 
         - id: bank-c-health
-          uri: ${BANK_C_SERVICE_URL:http://localhost:8083}
+          uri: lb://bank-c-service
           predicates:
             - Path=/api/bank-c/health
           filters:
             - SetPath=/health
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
 
 management:
   endpoints:
@@ -68,7 +75,7 @@ gateway:
   grpc:
     port: ${GATEWAY_GRPC_PORT:9090}
   services:
-    coordinator-url: ${COORDINATOR_SERVICE_URL:http://localhost:8090}
-    bank-a-url: ${BANK_A_SERVICE_URL:http://localhost:8081}
-    bank-b-url: ${BANK_B_SERVICE_URL:http://localhost:8082}
-    bank-c-url: ${BANK_C_SERVICE_URL:http://localhost:8083}
+    coordinator-url: http://coordinator-service
+    bank-a-url: http://bank-a-service
+    bank-b-url: http://bank-b-service
+    bank-c-url: http://bank-c-service

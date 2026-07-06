@@ -5,6 +5,13 @@ spring:
   application:
     name: bank-c-service
 
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
 bank:
   code: BANK_C
   data:

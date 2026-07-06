@@ -5,7 +5,14 @@ spring:
   application:
     name: coordinator-service
 
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
 banks:
-  bank-a-url: http://localhost:8081
-  bank-b-url: http://localhost:8082
-  bank-c-url: http://localhost:8083
+  bank-a-url: http://bank-a-service
+  bank-b-url: http://bank-b-service
+  bank-c-url: http://bank-c-service

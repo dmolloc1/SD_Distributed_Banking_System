@@ -5,6 +5,9 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +29,17 @@ public class GatewayOperationController {
     private final String coordinatorUrl;
     private final WebClient webClient;
 
+    @Configuration
+    static class WebClientConfig {
+        @Bean
+        @LoadBalanced
+        public WebClient.Builder loadBalancedWebClientBuilder() {
+            return WebClient.builder();
+        }
+    }
+
     public GatewayOperationController(
+            WebClient.Builder webClientBuilder,
             @Value("${gateway.services.bank-a-url}") String bankAUrl,
             @Value("${gateway.services.bank-b-url}") String bankBUrl,
             @Value("${gateway.services.bank-c-url}") String bankCUrl,
@@ -36,14 +49,14 @@ public class GatewayOperationController {
                 "BANK_B", bankBUrl,
                 "BANK_C", bankCUrl);
         this.coordinatorUrl = coordinatorUrl;
-        this.webClient = WebClient.create();
+        this.webClient = webClientBuilder.build();
     }
 
     @GetMapping("/api/customers/{customerId}/accounts")
     public Mono<ResponseEntity<List<Map<String, Object>>>> getCustomerAccounts(@PathVariable String customerId) {
         return Flux.fromIterable(bankUrls.values())
                 .flatMap(bankUrl -> webClient.get()
-                        .uri(URI.create(bankUrl + "/clients/" + customerId + "/accounts"))
+                        .uri(bankUrl + "/clients/" + customerId + "/accounts")
                         .retrieve()
                         .bodyToMono(new ParameterizedTypeReference<List<Map<String, Object>>>() {})
                         .onErrorReturn(List.of()))
@@ -118,7 +131,7 @@ public class GatewayOperationController {
     @GetMapping("/api/transactions/{transactionId}")
     public Mono<ResponseEntity<Map<String, Object>>> getTransactionStatus(@PathVariable String transactionId) {
         return webClient.get()
-                .uri(URI.create(coordinatorUrl + "/api/v1/orchestrator/transfers/" + transactionId))
+                .uri(coordinatorUrl + "/api/v1/orchestrator/transfers/" + transactionId)
                 .exchangeToMono(response -> response.toEntity(new ParameterizedTypeReference<Map<String, Object>>() {}))
                 .map(response -> ResponseEntity.status(response.getStatusCode()).body(response.getBody()))
                 .onErrorResume(e -> Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -136,7 +149,7 @@ public class GatewayOperationController {
 
     private Mono<ResponseEntity<Map<String, Object>>> forwardPost(String url, Map<String, Object> body) {
         return webClient.post()
-                .uri(URI.create(url))
+                .uri(url)
                 .bodyValue(body)
                 .exchangeToMono(response -> response.toEntity(new ParameterizedTypeReference<Map<String, Object>>() {}))
                 .map(response -> ResponseEntity.status(response.getStatusCode()).body(response.getBody()))
