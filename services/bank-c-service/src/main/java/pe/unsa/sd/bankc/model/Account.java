@@ -1,5 +1,7 @@
 package pe.unsa.sd.bankc.model;
 
+import java.math.BigDecimal;
+
 public class Account {
 
     private String accountId;
@@ -7,12 +9,12 @@ public class Account {
     private String bankCode;
     private String type;
     private String currency;
-    private double balance;
+    private BigDecimal balance;
 
     public Account() {
     }
 
-    public Account(String accountId, String clientId, String bankCode, String type, String currency, double balance) {
+    public Account(String accountId, String clientId, String bankCode, String type, String currency, BigDecimal balance) {
         this.accountId = accountId;
         this.clientId = clientId;
         this.bankCode = bankCode;
@@ -61,11 +63,11 @@ public class Account {
         this.currency = currency;
     }
 
-    public double getBalance() {
+    public BigDecimal getBalance() {
         return balance;
     }
 
-    public void setBalance(double balance) {
+    public void setBalance(BigDecimal balance) {
         this.balance = balance;
     }
 }
